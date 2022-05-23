@@ -8,9 +8,10 @@ license = "MPL-2.0"
 publish = false
 
 [dependencies]
-anyhow = "1.0.57"
+anyhow = "1"
 libbtrfsutil = "0.2"
 sys-mount = { version = "1.5", default-features = false }
 tempfile = "3"
 tokio = { version = "1", features = ["full"] }
 zbus = { version = "2", features = ["tokio"] }
+serde = { version = "1", features = ["derive"] }
