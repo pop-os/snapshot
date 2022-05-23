@@ -1,0 +1,16 @@
+[package]
+name = "pop-snapshot"
+description = "A daemon/tool for creating btrfs snapshots of a Pop!_OS system"
+authors = ["Lucy <lucy@system76.com>"]
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+publish = false
+
+[dependencies]
+anyhow = "1.0.57"
+libbtrfsutil = "0.2"
+sys-mount = { version = "1.5", default-features = false }
+tempfile = "3"
+tokio = { version = "1", features = ["full"] }
+zbus = { version = "2", features = ["tokio"] }
