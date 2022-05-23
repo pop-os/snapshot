@@ -17,8 +17,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-      - name: Install native dependencies
-        run: sudo apt-get --yes install libgtk-4-dev
       - name: Install stable Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
