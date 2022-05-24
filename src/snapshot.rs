@@ -7,6 +7,7 @@ use std::{
 };
 use sys_mount::{FilesystemType, Mount, UnmountDrop, UnmountFlags};
 use tempfile::TempDir;
+use tokio::fs;
 
 #[derive(Debug, Clone)]
 pub struct Snapshot {
@@ -25,18 +26,20 @@ impl MountedBtrfs {
 		self.tempdir.path()
 	}
 
-	pub fn list_snapshots(&self) -> Result<Vec<Snapshot>> {
+	pub async fn list_snapshots(&self) -> Result<Vec<Snapshot>> {
 		let mut snapshots = Vec::new();
 		let snapshot_dir = self.path().join("@snapshots").join("pop-snapshots");
 		if !snapshot_dir.exists() {
 			return Ok(Vec::new());
 		}
-		for entry in snapshot_dir
-			.read_dir()
-			.with_context(|| format!("failed to read directory {}", snapshot_dir.display()))?
+		let mut dir = fs::read_dir(&snapshot_dir)
+			.await
+			.with_context(|| format!("failed to read directory {}", snapshot_dir.display()))?;
+		while let Some(entry) = dir
+			.next_entry()
+			.await
+			.context("failed to read directory entry")?
 		{
-			let entry = entry
-				.with_context(|| format!("failed to read entry in {}", snapshot_dir.display()))?;
 			let path = entry.path();
 			if !path.exists() {
 				continue;
@@ -51,12 +54,14 @@ impl MountedBtrfs {
 				None => continue,
 			};
 			let mut subvolumes = Vec::new();
-			for entry in path
-				.read_dir()
-				.with_context(|| format!("failed to read directory {}", path.display()))?
+			let mut dir = fs::read_dir(&snapshot_dir)
+				.await
+				.with_context(|| format!("failed to read directory {}", path.display()))?;
+			while let Some(entry) = dir
+				.next_entry()
+				.await
+				.context("failed to read directory entry")?
 			{
-				let entry =
-					entry.with_context(|| format!("failed to read entry in {}", path.display()))?;
 				let path = entry.path();
 				if !path.exists() {
 					continue;
