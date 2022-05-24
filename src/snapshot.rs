@@ -104,7 +104,6 @@ impl MountedBtrfs {
 				CreateSnapshotFlags::READ_ONLY,
 				None,
 			)
-			.map_err(|err| anyhow!("btrfs error {err:?}"))
 			.with_context(|| format!("failed to snapshot subvolume '{}'", path.display()))?;
 		}
 		Ok(())
@@ -139,20 +138,15 @@ pub fn mount_snapshot_folder() -> Result<MountedBtrfs> {
 }
 
 pub fn get_non_home_subvolumes() -> Result<Vec<PathBuf>> {
-	let info = libbtrfsutil::subvolume_info("/", None)
-		.map_err(|err| anyhow!("btrfs error {err:?}"))
-		.context("failed to get subvolume info")?;
+	let info = libbtrfsutil::subvolume_info("/", None).context("failed to get subvolume info")?;
 	dbg!(&info);
 	let iter = SubvolumeIterator::new("/", info.parent_id(), SubvolumeIteratorFlags::empty())
-		.map_err(|err| anyhow!("btrfs error {err:?}"))
 		.context("failed to iterate root subvolumes")?;
 	let home_path = PathBuf::from("@home");
 	let snapshots_path = PathBuf::from("@snapshots");
 	let mut subvolumes = Vec::new();
 	for subvolume in iter {
-		let (path, id) = subvolume
-			.map_err(|err| anyhow!("btrfs error {err:?}"))
-			.context("failed to get subvolume")?;
+		let (path, id) = subvolume.context("failed to get subvolume")?;
 		println!("found {} (id {id})", path.display());
 		if path == home_path || path == snapshots_path {
 			continue;
