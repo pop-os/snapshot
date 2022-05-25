@@ -1,57 +1,75 @@
 name: Rust Checks
 env:
-  CARGO_TERM_COLOR: always
+    CARGO_TERM_COLOR: always
 on:
-  pull_request:
-    paths:
-      - "**.rs"
-      - ".github/workflows/rust.yml"
-  push:
-    paths:
-      - "**.rs"
-      - ".github/workflows/rust.yml"
+    pull_request:
+        paths:
+            - "**.rs"
+            - ".github/workflows/rust.yml"
+    push:
+        paths:
+            - "**.rs"
+            - ".github/workflows/rust.yml"
 jobs:
-  rustfmt:
-    name: Check Rust Formatting
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-      - name: Install stable Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          components: rustfmt, clippy
-      - name: Check with rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --check
-      - name: Check with clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --no-deps
-  cargo-deny:
-    name: Check with cargo-deny (${{ matrix.checks }})
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        checks:
-          - advisories
-          - bans licenses sources
-    continue-on-error: ${{ matrix.checks == 'advisories' }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-      - name: Install cargo-deny
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-deny
-          use-tool-cache: true
-      - name: Check with cargo-deny
-        uses: actions-rs/cargo@v1
-        with:
-          command: deny
-          args: check ${{ matrix.checks }}
+    rustfmt:
+        name: Check Rust Formatting
+        runs-on: ubuntu-22.04
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v2
+            - name: Install stable Rust toolchain
+              uses: actions-rs/toolchain@v1
+              with:
+                  profile: minimal
+                  toolchain: stable
+                  components: rustfmt, clippy
+            - name: Cache build
+              uses: actions/cache@v3
+              with:
+                  path: |
+                      ~/.cargo/
+                      target/
+                  key: ${{ runner.os }}-v1-cargo-${{ hashFiles('**/Cargo.lock') }}
+            - name: Check with rustfmt
+              uses: actions-rs/cargo@v1
+              with:
+                  command: fmt
+                  args: --check
+            - name: Check with clippy
+              uses: actions-rs/cargo@v1
+              with:
+                  command: clippy
+                  args: --no-deps
+    cargo-deny:
+        name: Check with cargo-deny (${{ matrix.checks }})
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                checks:
+                    - advisories
+                    - bans licenses sources
+        continue-on-error: ${{ matrix.checks == 'advisories' }}
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v2
+            - name: Cache cargo-deny
+              uses: actions/cache@v3
+              with:
+                  path: |
+                      ~/.cargo/
+                  key: ${{ runner.os }}-v1-cargo-deny
+            - name: Install stable Rust toolchain
+              uses: actions-rs/toolchain@v1
+              with:
+                  profile: minimal
+                  toolchain: stable
+            - name: Install cargo-deny
+              uses: actions-rs/cargo@v1
+              with:
+                  command: install
+                  args: cargo-deny
+            - name: Check with cargo-deny
+              uses: actions-rs/cargo@v1
+              with:
+                  command: deny
+                  args: check ${{ matrix.checks }}
