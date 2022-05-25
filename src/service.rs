@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
+use crate::snapshot::mount_snapshot_folder;
 use zbus::dbus_interface;
 
 pub struct SnapshotService;
@@ -11,10 +12,15 @@ impl SnapshotService {
 	}
 
 	async fn take_snapshot(&self) {
-		todo!()
+		let btrfs = mount_snapshot_folder().expect("failed to mount btrfs");
+		btrfs.make_snapshot().expect("failed to take snapshot");
 	}
 
 	async fn restore_snapshot(&self, snapshot: u64) {
-		todo!()
+		let btrfs = mount_snapshot_folder().expect("failed to mount btrfs");
+		btrfs
+			.restore_snapshot(snapshot)
+			.await
+			.expect("failed to restore snapshot");
 	}
 }

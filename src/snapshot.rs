@@ -84,6 +84,74 @@ impl MountedBtrfs {
 		Ok(snapshots)
 	}
 
+	pub async fn restore_snapshot(&self, snapshot: u64) -> Result<()> {
+		let snapshot_dir = self
+			.path()
+			.join("@snapshots")
+			.join("pop-snapshots")
+			.join(snapshot.to_string());
+		if !snapshot_dir.exists() {
+			return Err(anyhow!("snapshot {} does not exist", snapshot));
+		}
+		let epoch = SystemTime::now()
+			.duration_since(SystemTime::UNIX_EPOCH)
+			.context("failed to get current time")?
+			.as_secs();
+		let current_snapshot_dir = self
+			.path()
+			.join("@snapshots")
+			.join("pop-snapshots")
+			.join(epoch.to_string());
+		if !current_snapshot_dir.exists() {
+			fs::create_dir_all(&current_snapshot_dir)
+				.await
+				.with_context(|| {
+					format!(
+						"failed to create directory {}",
+						current_snapshot_dir.display()
+					)
+				})?;
+		}
+		let mut dir = fs::read_dir(&snapshot_dir)
+			.await
+			.with_context(|| format!("failed to read directory {}", snapshot_dir.display()))?;
+		while let Some(entry) = dir
+			.next_entry()
+			.await
+			.context("failed to read directory entry")?
+		{
+			let path = entry.path();
+			let name = match path
+				.file_name()
+				.and_then(|file_name_os| file_name_os.to_str())
+			{
+				Some(name) => name,
+				None => continue,
+			};
+			let base_subvolume_path = self.path().join(name);
+			if !base_subvolume_path.exists() {
+				continue;
+			}
+			let new_snapshot = current_snapshot_dir.join(name);
+			fs::rename(&path, &new_snapshot).await.with_context(|| {
+				format!(
+					"failed to rename {} to {}",
+					path.display(),
+					new_snapshot.display()
+				)
+			})?;
+			libbtrfsutil::create_snapshot(
+				&path,
+				&base_subvolume_path,
+				CreateSnapshotFlags::empty(),
+				None,
+			)
+			.with_context(|| format!("failed to snapshot subvolume '{}'", path.display()))?;
+		}
+
+		Ok(())
+	}
+
 	pub fn make_snapshot(&self) -> Result<()> {
 		let subvolumes_to_snapshot =
 			get_non_home_subvolumes().context("failed to list subvolumes")?;
@@ -104,7 +172,7 @@ impl MountedBtrfs {
 			let snapshot_name = format!("pop-snapshot_{epoch}_{}", path.display());
 			println!("creating snapshot {snapshot_name}");
 			libbtrfsutil::create_snapshot(
-				self.path(),
+				&path,
 				&snapshot_dir.join(snapshot_name),
 				CreateSnapshotFlags::READ_ONLY,
 				None,
