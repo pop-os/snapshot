@@ -12,12 +12,12 @@ impl SnapshotService {
 	}
 
 	async fn take_snapshot(&self) {
-		let btrfs = MountedBtrfs::new().expect("failed to mount btrfs");
+		let btrfs = MountedBtrfs::new().await.expect("failed to mount btrfs");
 		btrfs.make_snapshot().expect("failed to take snapshot");
 	}
 
 	async fn restore_snapshot(&self, snapshot: u64) {
-		let btrfs = MountedBtrfs::new().expect("failed to mount btrfs");
+		let btrfs = MountedBtrfs::new().await.expect("failed to mount btrfs");
 		btrfs
 			.restore_snapshot(snapshot)
 			.await

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
-mod service;
-mod snapshot;
+pub(crate) mod service;
+pub(crate) mod snapshot;
+pub(crate) mod util;
 
 use anyhow::{Context, Result};
 use std::future::pending;

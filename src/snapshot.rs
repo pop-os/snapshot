@@ -1,4 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
+
+mod create;
+mod list;
+mod mount;
+mod restore;
+
 use anyhow::{anyhow, Context, Result};
 use libbtrfsutil::{CreateSnapshotFlags, SubvolumeIterator, SubvolumeIteratorFlags};
 use std::{
@@ -9,95 +15,14 @@ use sys_mount::{FilesystemType, Mount, UnmountDrop, UnmountFlags};
 use tempfile::TempDir;
 use tokio::fs;
 
-#[derive(Debug, Clone)]
-pub struct Snapshot {
-	capture_time: SystemTime,
-	path: PathBuf,
-	subvolumes: Vec<String>,
-}
-
 pub struct MountedBtrfs {
 	_mount: UnmountDrop<Mount>,
 	tempdir: TempDir,
 }
 
 impl MountedBtrfs {
-	pub fn new() -> Result<Self> {
-		let tempdir = tempfile::tempdir().context("failed to create tempdir")?;
-		let mount = Mount::builder()
-			.fstype(FilesystemType::Manual("btrfs"))
-			.data("subvol=/")
-			.mount_autodrop(
-				find_root_device().context("failed to find root device")?,
-				tempdir.path(),
-				UnmountFlags::DETACH,
-			)
-			.with_context(|| {
-				format!("failed to mount btrfs root to {}", tempdir.path().display())
-			})?;
-		Ok(MountedBtrfs {
-			_mount: mount,
-			tempdir,
-		})
-	}
-
 	pub fn path(&self) -> &Path {
 		self.tempdir.path()
-	}
-
-	pub async fn list_snapshots(&self) -> Result<Vec<Snapshot>> {
-		let mut snapshots = Vec::new();
-		let snapshot_dir = self.path().join("@snapshots").join("pop-snapshots");
-		if !snapshot_dir.exists() {
-			return Ok(Vec::new());
-		}
-		let mut dir = fs::read_dir(&snapshot_dir)
-			.await
-			.with_context(|| format!("failed to read directory {}", snapshot_dir.display()))?;
-		while let Some(entry) = dir
-			.next_entry()
-			.await
-			.context("failed to read directory entry")?
-		{
-			let path = entry.path();
-			let capture_time = match path
-				.file_name()
-				.and_then(|file_name_os| file_name_os.to_str())
-				.and_then(|file_name| file_name.parse::<u64>().ok())
-				.map(|seconds| SystemTime::UNIX_EPOCH + Duration::from_secs(seconds))
-			{
-				Some(capture_time) => capture_time,
-				None => continue,
-			};
-			let mut subvolumes = Vec::new();
-			let mut dir = fs::read_dir(&snapshot_dir)
-				.await
-				.with_context(|| format!("failed to read directory {}", path.display()))?;
-			while let Some(entry) = dir
-				.next_entry()
-				.await
-				.context("failed to read directory entry")?
-			{
-				let path = entry.path();
-				if !path.exists() {
-					continue;
-				}
-				let name = match path
-					.file_name()
-					.and_then(|file_name_os| file_name_os.to_str())
-				{
-					Some(name) => name,
-					None => continue,
-				};
-				subvolumes.push(name.to_string());
-			}
-			snapshots.push(Snapshot {
-				capture_time,
-				path,
-				subvolumes,
-			});
-		}
-		Ok(snapshots)
 	}
 
 	pub async fn restore_snapshot(&self, snapshot: u64) -> Result<()> {
@@ -197,16 +122,6 @@ impl MountedBtrfs {
 		}
 		Ok(())
 	}
-}
-
-pub fn find_root_device() -> Result<PathBuf> {
-	let mounts = std::fs::read_to_string("/proc/mounts").context("failed to read /proc/mounts")?;
-	mounts
-		.lines()
-		.find(|line| line.contains("subvol=/@root"))
-		.and_then(|line| line.split_whitespace().next())
-		.map(PathBuf::from)
-		.context("failed to find @root")
 }
 
 pub fn get_non_home_subvolumes() -> Result<Vec<PathBuf>> {
