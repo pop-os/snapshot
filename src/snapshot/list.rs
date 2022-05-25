@@ -36,6 +36,7 @@ impl MountedBtrfs {
 				Some(capture_time) => capture_time,
 				None => continue,
 			};
+			debug!("Found snapshot {capture_time} at {}", path.display());
 			snapshots.push((path, capture_time));
 		}
 		Ok(snapshots)
@@ -66,6 +67,10 @@ impl MountedBtrfs {
 				Some(subvolume) => subvolume,
 				None => continue,
 			};
+			debug!(
+				"Found subvolume {subvolume} for snapshot {capture_time} at {}",
+				path.display()
+			);
 			subvolumes.push(subvolume);
 		}
 		Ok(subvolumes)
@@ -82,6 +87,11 @@ impl MountedBtrfs {
 				.list_snapshot_subvolumes(snapshot)
 				.await
 				.with_context(|| format!("failed to list subvolumes for snapshot '{snapshot}'"))?;
+			debug!(
+				"Snapshot {snapshot} has {} subvolumes at {}",
+				subvolumes.len(),
+				path.display()
+			);
 			snapshots.push(Snapshot {
 				capture_time: snapshot,
 				path,

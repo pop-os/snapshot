@@ -13,8 +13,14 @@ impl MountedBtrfs {
 		let root_device_path = find_root_device()
 			.await
 			.context("failed to find root device")?;
+		debug!("Found root device path at {}", root_device_path.display());
 		let tempdir_path = tempdir.path().to_path_buf();
 
+		debug!(
+			"Mounting {}[subvol=/] at {}",
+			root_device_path.display(),
+			tempdir_path.display()
+		);
 		let mount = tokio::task::spawn_blocking(move || {
 			Mount::builder()
 				.fstype(FilesystemType::Manual("btrfs"))
