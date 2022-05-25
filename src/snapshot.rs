@@ -22,6 +22,25 @@ pub struct MountedBtrfs {
 }
 
 impl MountedBtrfs {
+	pub fn new() -> Result<Self> {
+		let tempdir = tempfile::tempdir().context("failed to create tempdir")?;
+		let mount = Mount::builder()
+			.fstype(FilesystemType::Manual("btrfs"))
+			.data("subvol=/")
+			.mount_autodrop(
+				find_root_device().context("failed to find root device")?,
+				tempdir.path(),
+				UnmountFlags::DETACH,
+			)
+			.with_context(|| {
+				format!("failed to mount btrfs root to {}", tempdir.path().display())
+			})?;
+		Ok(MountedBtrfs {
+			_mount: mount,
+			tempdir,
+		})
+	}
+
 	pub fn path(&self) -> &Path {
 		self.tempdir.path()
 	}
@@ -41,9 +60,6 @@ impl MountedBtrfs {
 			.context("failed to read directory entry")?
 		{
 			let path = entry.path();
-			if !path.exists() {
-				continue;
-			}
 			let capture_time = match path
 				.file_name()
 				.and_then(|file_name_os| file_name_os.to_str())
@@ -191,23 +207,6 @@ pub fn find_root_device() -> Result<PathBuf> {
 		.and_then(|line| line.split_whitespace().next())
 		.map(PathBuf::from)
 		.context("failed to find @root")
-}
-
-pub fn mount_snapshot_folder() -> Result<MountedBtrfs> {
-	let tempdir = tempfile::tempdir().context("failed to create tempdir")?;
-	let mount = Mount::builder()
-		.fstype(FilesystemType::Manual("btrfs"))
-		.data("subvol=/")
-		.mount_autodrop(
-			find_root_device().context("failed to find root device")?,
-			tempdir.path(),
-			UnmountFlags::DETACH,
-		)
-		.with_context(|| format!("failed to mount btrfs root to {}", tempdir.path().display()))?;
-	Ok(MountedBtrfs {
-		_mount: mount,
-		tempdir,
-	})
 }
 
 pub fn get_non_home_subvolumes() -> Result<Vec<PathBuf>> {
