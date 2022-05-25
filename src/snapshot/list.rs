@@ -3,7 +3,7 @@
 use super::MountedBtrfs;
 use anyhow::{anyhow, Context, Result};
 use std::path::{Path, PathBuf};
-use time::{ext::NumericalDuration, OffsetDateTime};
+use time::OffsetDateTime;
 use tokio::fs;
 
 #[derive(Debug, Clone)]

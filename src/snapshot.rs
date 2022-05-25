@@ -92,36 +92,6 @@ impl MountedBtrfs {
 
 		Ok(())
 	}
-
-	pub fn make_snapshot(&self) -> Result<()> {
-		let subvolumes_to_snapshot =
-			get_non_home_subvolumes().context("failed to list subvolumes")?;
-		println!("{} subvolumes to snapshot", subvolumes_to_snapshot.len());
-		let epoch = SystemTime::now()
-			.duration_since(SystemTime::UNIX_EPOCH)
-			.context("failed to get current time")?
-			.as_secs();
-		let snapshot_dir = self
-			.path()
-			.join("@snapshots")
-			.join("pop-snapshots")
-			.join(epoch.to_string());
-		for path in subvolumes_to_snapshot {
-			if !snapshot_dir.is_dir() {
-				std::fs::create_dir_all(&snapshot_dir).context("failed to create snapshot dir")?;
-			}
-			let snapshot_name = format!("pop-snapshot_{epoch}_{}", path.display());
-			println!("creating snapshot {snapshot_name}");
-			libbtrfsutil::create_snapshot(
-				&path,
-				&snapshot_dir.join(snapshot_name),
-				CreateSnapshotFlags::READ_ONLY,
-				None,
-			)
-			.with_context(|| format!("failed to snapshot subvolume '{}'", path.display()))?;
-		}
-		Ok(())
-	}
 }
 
 pub fn get_non_home_subvolumes() -> Result<Vec<PathBuf>> {
