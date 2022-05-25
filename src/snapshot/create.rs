@@ -22,7 +22,7 @@ impl MountedBtrfs {
 		let snapshot_dir = self
 			.path()
 			.join("@snapshots/pop-snapshots")
-			.join(epoch.to_string());
+			.join(epoch.unix_timestamp().to_string());
 		if !snapshot_dir.is_dir() {
 			std::fs::create_dir_all(&snapshot_dir).context("failed to create snapshot dir")?;
 		}
@@ -32,7 +32,7 @@ impl MountedBtrfs {
 				None => continue,
 			};
 			info!("Snapshotting {}", path.display());
-			let source = path.to_path_buf();
+			let source = self.path().join(path);
 			let destination = snapshot_dir.join(&subvolume_name);
 			tokio::task::spawn_blocking(move || {
 				libbtrfsutil::create_snapshot(
