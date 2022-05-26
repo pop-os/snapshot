@@ -8,12 +8,13 @@ use tokio::fs;
 
 #[derive(Debug, Clone)]
 pub struct Snapshot {
-	/// The time at which this snapshot was made.
-	capture_time: OffsetDateTime,
+	/// The time at which this snapshot was made,
+	/// represented as a unix timestamp.
+	pub(crate) capture_time: OffsetDateTime,
 	/// The path this snapshot currently lives at.
-	path: PathBuf,
+	pub(crate) path: PathBuf,
 	/// The subvolumes this snapshot contains.
-	subvolumes: Vec<String>,
+	pub(crate) subvolumes: Vec<String>,
 }
 
 impl MountedBtrfs {

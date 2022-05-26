@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use super::MountedBtrfs;
-use crate::util::list_subvolumes_eligible_for_snapshotting;
+use crate::{service::snapshot::SnapshotObject, util::list_subvolumes_eligible_for_snapshotting};
 use anyhow::{Context, Result};
 use libbtrfsutil::CreateSnapshotFlags;
 use time::OffsetDateTime;
 
 impl MountedBtrfs {
-	pub async fn create_snapshot(&self) -> Result<()> {
+	pub async fn create_snapshot(&self) -> Result<SnapshotObject> {
 		let subvolumes_to_snapshot = {
 			let path = self.path().to_path_buf();
 			tokio::task::spawn_blocking(move || list_subvolumes_eligible_for_snapshotting(&path))
@@ -26,11 +26,13 @@ impl MountedBtrfs {
 		if !snapshot_dir.is_dir() {
 			std::fs::create_dir_all(&snapshot_dir).context("failed to create snapshot dir")?;
 		}
+		let mut subvolumes = Vec::with_capacity(subvolumes_to_snapshot.len());
 		for path in subvolumes_to_snapshot {
 			let subvolume_name = match path.file_name() {
 				Some(name) => name.to_string_lossy().to_string(),
 				None => continue,
 			};
+			subvolumes.push(subvolume_name.clone());
 			info!("Snapshotting {}", path.display());
 			let source = self.path().join(path);
 			let destination = snapshot_dir.join(&subvolume_name);
@@ -45,6 +47,6 @@ impl MountedBtrfs {
 			.await?
 			.with_context(|| format!("failed to snapshot subvolume '{}'", subvolume_name))?;
 		}
-		Ok(())
+		Ok(SnapshotObject::new(epoch, snapshot_dir, subvolumes))
 	}
 }
