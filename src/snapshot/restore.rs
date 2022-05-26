@@ -73,12 +73,16 @@ impl MountedBtrfs {
 				path.display(),
 				base_subvolume_path.display()
 			);
-			libbtrfsutil::create_snapshot(
-				&path,
-				&base_subvolume_path,
-				CreateSnapshotFlags::empty(),
-				None,
-			)
+			let source = path.clone();
+			tokio::task::spawn_blocking(move || {
+				libbtrfsutil::create_snapshot(
+					&source,
+					&base_subvolume_path,
+					CreateSnapshotFlags::empty(),
+					None,
+				)
+			})
+			.await?
 			.with_context(|| format!("failed to snapshot subvolume '{}'", path.display()))?;
 		}
 

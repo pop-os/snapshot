@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 pub mod create;
+pub mod delete;
 pub mod list;
 pub mod mount;
 pub mod restore;

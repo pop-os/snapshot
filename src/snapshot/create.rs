@@ -4,10 +4,16 @@ use super::MountedBtrfs;
 use crate::{service::snapshot::SnapshotObject, util::list_subvolumes_eligible_for_snapshotting};
 use anyhow::{Context, Result};
 use libbtrfsutil::CreateSnapshotFlags;
+use std::{collections::HashSet, sync::Arc};
 use time::OffsetDateTime;
+use tokio::sync::RwLock;
+use zbus::zvariant::OwnedObjectPath;
 
 impl MountedBtrfs {
-	pub async fn create_snapshot(&self) -> Result<SnapshotObject> {
+	pub async fn create_snapshot(
+		&self,
+		snapshot_ref: Arc<RwLock<HashSet<OwnedObjectPath>>>,
+	) -> Result<SnapshotObject> {
 		let subvolumes_to_snapshot = {
 			let path = self.path().to_path_buf();
 			tokio::task::spawn_blocking(move || list_subvolumes_eligible_for_snapshotting(&path))
@@ -47,6 +53,11 @@ impl MountedBtrfs {
 			.await?
 			.with_context(|| format!("failed to snapshot subvolume '{}'", subvolume_name))?;
 		}
-		Ok(SnapshotObject::new(epoch, snapshot_dir, subvolumes))
+		Ok(SnapshotObject::new(
+			epoch,
+			snapshot_dir,
+			subvolumes,
+			snapshot_ref,
+		))
 	}
 }

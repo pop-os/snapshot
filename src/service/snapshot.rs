@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf, sync::Arc};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
-use zbus::dbus_interface;
+use tokio::sync::RwLock;
+use zbus::{dbus_interface, zvariant::OwnedObjectPath, MessageHeader, ObjectServer};
 
 use crate::snapshot::MountedBtrfs;
 
@@ -10,6 +11,7 @@ pub struct SnapshotObject {
 	creation_time: OffsetDateTime,
 	path: PathBuf,
 	subvolumes: Vec<String>,
+	snapshots: Arc<RwLock<HashSet<OwnedObjectPath>>>,
 }
 
 impl SnapshotObject {
@@ -17,11 +19,13 @@ impl SnapshotObject {
 		creation_time: OffsetDateTime,
 		path: PathBuf,
 		subvolumes: Vec<String>,
+		snapshots: Arc<RwLock<HashSet<OwnedObjectPath>>>,
 	) -> Self {
 		Self {
 			creation_time,
 			path,
 			subvolumes,
+			snapshots,
 		}
 	}
 }
@@ -55,5 +59,28 @@ impl SnapshotObject {
 			.restore_snapshot(self.creation_time)
 			.await
 			.expect("failed to restore snapshot");
+	}
+
+	async fn delete(
+		&self,
+		#[zbus(header)] hdr: MessageHeader<'_>,
+		#[zbus(object_server)] object_server: &ObjectServer,
+	) {
+		let btrfs = MountedBtrfs::new().await.expect("failed to mount btrfs");
+		btrfs
+			.delete_snapshot(self.creation_time)
+			.await
+			.expect("failed to delete snapshot");
+		let path = OwnedObjectPath::from(
+			hdr.path()
+				.expect("failed to get own path")
+				.expect("invalid object path")
+				.to_owned(),
+		);
+		object_server
+			.remove::<Self, _>(&path)
+			.await
+			.expect("failed to remove object");
+		self.snapshots.write().await.remove(&path);
 	}
 }

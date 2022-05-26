@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
 		)
 		.init();
 
-	let mut service = service::SnapshotService::new();
+	let service = service::SnapshotService::new();
 	let connection = ConnectionBuilder::system()
 		.context("failed to get system dbus connection")?
 		.name("com.system76.SnapshotDaemon")?
@@ -58,20 +58,22 @@ async fn main() -> Result<()> {
 			.list_snapshots()
 			.await
 			.context("failed to list snapshots")?;
-		service.snapshots.reserve(snapshots.len());
+		let mut snapshots_set = service.snapshots.write().await;
+		snapshots_set.reserve(snapshots.len());
 		for Snapshot {
 			capture_time,
 			path,
 			subvolumes,
 		} in snapshots
 		{
-			let snapshot_object = SnapshotObject::new(capture_time, path, subvolumes);
+			let snapshot_object =
+				SnapshotObject::new(capture_time, path, subvolumes, service.snapshots.clone());
 			let id = create_new_snapshot(&*connection.object_server(), snapshot_object)
 				.await
 				.context("failed to create new snapshot object")?;
 
 			debug!("Created new snapshot object: {:?}", id);
-			service.snapshots.push(id);
+			snapshots_set.insert(id);
 		}
 	}
 	connection
