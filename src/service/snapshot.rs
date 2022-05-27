@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
+use super::SnapshotService;
 use crate::{
 	create_new_snapshot,
 	snapshot::{metadata::SnapshotMetadata, MountedBtrfs},
@@ -8,7 +9,10 @@ use anyhow::{Context, Result};
 use std::{collections::HashSet, sync::Arc};
 use time::format_description::well_known::Rfc3339;
 use tokio::sync::RwLock;
-use zbus::{dbus_interface, zvariant::OwnedObjectPath, MessageHeader, ObjectServer};
+use zbus::{
+	dbus_interface, zvariant::OwnedObjectPath, Connection, MessageHeader, ObjectServer,
+	SignalContext,
+};
 
 pub struct SnapshotObject {
 	metadata: SnapshotMetadata,
@@ -47,6 +51,11 @@ impl SnapshotObject {
 			)
 		})?;
 		Ok(())
+	}
+
+	async fn get_base_service(&self, conn: &Connection) -> zbus::Result<SignalContext<'_>> {
+		let path = OwnedObjectPath::try_from("/com/system76/SnapshotDaemon")?;
+		SignalContext::new(conn, path)
 	}
 }
 
@@ -104,21 +113,41 @@ impl SnapshotObject {
 		self.metadata.uuid.to_string()
 	}
 
-	async fn restore(&self, #[zbus(object_server)] object_server: &ObjectServer) {
+	async fn restore(
+		&self,
+		#[zbus(connection)] connection: &Connection,
+		#[zbus(object_server)] object_server: &ObjectServer,
+	) {
 		let btrfs = MountedBtrfs::new().await.expect("failed to mount btrfs");
 		let new_snapshot = btrfs
 			.restore_snapshot(&self.metadata)
 			.await
 			.expect("failed to restore snapshot");
+		let new_snapshot_uuid = new_snapshot.uuid.to_string();
 		let new_snapshot_object = SnapshotObject::new(new_snapshot, self.snapshots.clone());
 		let path = create_new_snapshot(object_server, new_snapshot_object)
 			.await
 			.expect("failed to register backup snapshot");
 		self.snapshots.write().await.insert(path);
+		let base_service = self
+			.get_base_service(connection)
+			.await
+			.expect("failed to get base service signal context");
+		SnapshotService::snapshot_restored(
+			&base_service,
+			&self.metadata.uuid.to_string(),
+			&new_snapshot_uuid,
+		)
+		.await
+		.expect("failed to emit SnapshotRestored signal");
+		SnapshotService::snapshot_created(&base_service, &new_snapshot_uuid)
+			.await
+			.expect("failed to emit SnapshotCreated signal");
 	}
 
 	async fn delete(
 		&self,
+		#[zbus(connection)] connection: &Connection,
 		#[zbus(header)] hdr: MessageHeader<'_>,
 		#[zbus(object_server)] object_server: &ObjectServer,
 	) {
@@ -146,5 +175,12 @@ impl SnapshotObject {
 			.await
 			.expect("failed to remove object");
 		self.snapshots.write().await.remove(&path);
+		let base_service = self
+			.get_base_service(connection)
+			.await
+			.expect("failed to get base service signal context");
+		SnapshotService::snapshot_deleted(&base_service, &self.metadata.uuid.to_string())
+			.await
+			.expect("failed to emit SnapshotDeleted signal");
 	}
 }
