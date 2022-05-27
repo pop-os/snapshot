@@ -78,6 +78,14 @@ impl SnapshotObject {
 			.delete_snapshot(&self.metadata)
 			.await
 			.expect("failed to delete snapshot");
+		let metadata_path = btrfs
+			.path()
+			.join("@snapshots/pop-snapshots")
+			.join(self.metadata.uuid.to_string())
+			.with_extension("snapshot.json");
+		tokio::fs::remove_file(&metadata_path)
+			.await
+			.expect("failed to remove snapshot metadata");
 		let path = OwnedObjectPath::from(
 			hdr.path()
 				.expect("failed to get own path")
