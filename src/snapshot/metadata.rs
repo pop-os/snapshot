@@ -7,9 +7,9 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct SnapshotMetadata {
 	pub uuid: Uuid,
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(skip_serializing_if = "is_opt_string_empty")]
 	pub name: Option<String>,
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(skip_serializing_if = "is_opt_string_empty")]
 	pub description: Option<String>,
 	#[serde(with = "time::serde::rfc3339")]
 	pub creation_time: OffsetDateTime,
@@ -41,5 +41,12 @@ impl PartialOrd for SnapshotMetadata {
 impl Ord for SnapshotMetadata {
 	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
 		self.creation_time.cmp(&other.creation_time)
+	}
+}
+
+fn is_opt_string_empty(val: &Option<String>) -> bool {
+	match val {
+		Some(val) => val.trim().is_empty(),
+		None => true,
 	}
 }
