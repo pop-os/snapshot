@@ -43,3 +43,13 @@ pub fn list_subvolumes_eligible_for_snapshotting(root_path: &Path) -> Result<Vec
 	}
 	Ok(subvolumes)
 }
+
+pub trait ToFdoError<T> {
+	fn to_fdo_err(self) -> zbus::fdo::Result<T>;
+}
+
+impl<T> ToFdoError<T> for anyhow::Result<T> {
+	fn to_fdo_err(self) -> zbus::fdo::Result<T> {
+		self.map_err(|err| zbus::fdo::Error::Failed(format!("{:?}", err)))
+	}
+}

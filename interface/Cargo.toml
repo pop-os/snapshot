@@ -1,0 +1,10 @@
+[package]
+name = "zbus-pop-snapshot"
+description = "zbus interface for the Pop!_OS btrfs snapshotting daemon"
+authors = ["Lucy <lucy@system76.com>"]
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+
+[dependencies]
+zbus = "2.2.0"

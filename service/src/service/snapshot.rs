@@ -4,13 +4,14 @@ use super::SnapshotService;
 use crate::{
 	create_new_snapshot,
 	snapshot::{metadata::SnapshotMetadata, MountedBtrfs},
+	util::ToFdoError,
 };
 use anyhow::{Context, Result};
 use std::{collections::HashSet, sync::Arc};
 use time::format_description::well_known::Rfc3339;
 use tokio::sync::RwLock;
 use zbus::{
-	dbus_interface, zvariant::OwnedObjectPath, Connection, MessageHeader, ObjectServer,
+	dbus_interface, fdo, zvariant::OwnedObjectPath, Connection, MessageHeader, ObjectServer,
 	SignalContext,
 };
 
@@ -75,7 +76,7 @@ impl SnapshotObject {
 	}
 
 	#[dbus_interface(property)]
-	async fn set_name(&mut self, value: &str) {
+	async fn set_name(&mut self, value: &str) -> fdo::Result<()> {
 		self.metadata.name = if value.trim().is_empty() {
 			None
 		} else {
@@ -83,7 +84,9 @@ impl SnapshotObject {
 		};
 		self.update_metadata_file()
 			.await
-			.expect("failed to update metadata file");
+			.context("failed to update metadata file")
+			.to_fdo_err()?;
+		Ok(())
 	}
 
 	#[dbus_interface(property)]
@@ -92,7 +95,7 @@ impl SnapshotObject {
 	}
 
 	#[dbus_interface(property)]
-	async fn set_description(&mut self, value: &str) {
+	async fn set_description(&mut self, value: &str) -> fdo::Result<()> {
 		self.metadata.description = if value.trim().is_empty() {
 			None
 		} else {
@@ -100,7 +103,9 @@ impl SnapshotObject {
 		};
 		self.update_metadata_file()
 			.await
-			.expect("failed to update metadata file");
+			.context("failed to update metadata file")
+			.to_fdo_err()?;
+		Ok(())
 	}
 
 	#[dbus_interface(property)]
@@ -117,32 +122,41 @@ impl SnapshotObject {
 		&self,
 		#[zbus(connection)] connection: &Connection,
 		#[zbus(object_server)] object_server: &ObjectServer,
-	) {
-		let btrfs = MountedBtrfs::new().await.expect("failed to mount btrfs");
+	) -> fdo::Result<()> {
+		let btrfs = MountedBtrfs::new()
+			.await
+			.context("failed to mount btrfs")
+			.to_fdo_err()?;
 		let new_snapshot = btrfs
 			.restore_snapshot(&self.metadata)
 			.await
-			.expect("failed to restore snapshot");
+			.context("failed to restore snapshot")
+			.to_fdo_err()?;
 		let new_snapshot_uuid = new_snapshot.uuid.to_string();
 		let new_snapshot_object = SnapshotObject::new(new_snapshot, self.snapshots.clone());
 		let path = create_new_snapshot(object_server, new_snapshot_object)
 			.await
-			.expect("failed to register backup snapshot");
+			.context("failed to register backup snapshot")
+			.to_fdo_err()?;
 		self.snapshots.write().await.insert(path);
 		let base_service = self
 			.get_base_service(connection)
 			.await
-			.expect("failed to get base service signal context");
+			.context("failed to get base service signal context")
+			.to_fdo_err()?;
 		SnapshotService::snapshot_restored(
 			&base_service,
 			&self.metadata.uuid.to_string(),
 			&new_snapshot_uuid,
 		)
 		.await
-		.expect("failed to emit SnapshotRestored signal");
+		.context("failed to emit SnapshotRestored signal")
+		.to_fdo_err()?;
 		SnapshotService::snapshot_created(&base_service, &new_snapshot_uuid)
 			.await
-			.expect("failed to emit SnapshotCreated signal");
+			.context("failed to emit SnapshotCreated signal")
+			.to_fdo_err()?;
+		Ok(())
 	}
 
 	async fn delete(
@@ -150,12 +164,16 @@ impl SnapshotObject {
 		#[zbus(connection)] connection: &Connection,
 		#[zbus(header)] hdr: MessageHeader<'_>,
 		#[zbus(object_server)] object_server: &ObjectServer,
-	) {
-		let btrfs = MountedBtrfs::new().await.expect("failed to mount btrfs");
+	) -> fdo::Result<()> {
+		let btrfs = MountedBtrfs::new()
+			.await
+			.context("failed to mount btrfs")
+			.to_fdo_err()?;
 		btrfs
 			.delete_snapshot(&self.metadata)
 			.await
-			.expect("failed to delete snapshot");
+			.context("failed to delete snapshot")
+			.to_fdo_err()?;
 		let metadata_path = btrfs
 			.path()
 			.join("@snapshots/pop-snapshots")
@@ -163,24 +181,31 @@ impl SnapshotObject {
 			.with_extension("snapshot.json");
 		tokio::fs::remove_file(&metadata_path)
 			.await
-			.expect("failed to remove snapshot metadata");
+			.context("failed to remove snapshot metadata")
+			.to_fdo_err()?;
 		let path = OwnedObjectPath::from(
 			hdr.path()
-				.expect("failed to get own path")
-				.expect("invalid object path")
+				.context("failed to get own path")
+				.to_fdo_err()?
+				.context("invalid object path")
+				.to_fdo_err()?
 				.to_owned(),
 		);
 		object_server
 			.remove::<Self, _>(&path)
 			.await
-			.expect("failed to remove object");
+			.context("failed to remove object")
+			.to_fdo_err()?;
 		self.snapshots.write().await.remove(&path);
 		let base_service = self
 			.get_base_service(connection)
 			.await
-			.expect("failed to get base service signal context");
+			.context("failed to get base service signal context")
+			.to_fdo_err()?;
 		SnapshotService::snapshot_deleted(&base_service, &self.metadata.uuid.to_string())
 			.await
-			.expect("failed to emit SnapshotDeleted signal");
+			.context("failed to emit SnapshotDeleted signal")
+			.to_fdo_err()?;
+		Ok(())
 	}
 }
