@@ -37,7 +37,8 @@ pub trait Snapshot {
 	#[dbus_proxy(property)]
 	fn uuid(&self) -> fdo::Result<String>;
 
-	/// Restores the system to this snapshot.
+	/// Restores the system to this snapshot,
+	/// creating a backup snapshot of the current system state in the process.
 	fn restore(&self) -> fdo::Result<()>;
 
 	/// Deletes this snapshot permanently.
