@@ -6,7 +6,7 @@ use libbtrfsutil::CreateSnapshotFlags;
 use tokio::fs;
 
 impl MountedBtrfs {
-	pub async fn restore_snapshot(&self, snapshot: &SnapshotMetadata) -> Result<()> {
+	pub async fn restore_snapshot(&self, snapshot: &SnapshotMetadata) -> Result<SnapshotMetadata> {
 		let restore_snapshot_dir = self
 			.path()
 			.join("@snapshots/pop-snapshots")
@@ -96,6 +96,6 @@ impl MountedBtrfs {
 			)
 		})?;
 
-		Ok(())
+		Ok(new_snapshot)
 	}
 }
