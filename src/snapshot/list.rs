@@ -2,8 +2,6 @@
 
 use super::{metadata::SnapshotMetadata, MountedBtrfs};
 use anyhow::{anyhow, Context, Result};
-use std::path::Path;
-use time::OffsetDateTime;
 use tokio::fs;
 
 impl MountedBtrfs {

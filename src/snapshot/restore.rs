@@ -34,9 +34,10 @@ impl MountedBtrfs {
 				})?;
 		}
 		for subvolume in &snapshot.subvolumes {
-			let restore_target_subvolume_path = restore_snapshot_dir.join(subvolume);
-			let new_snapshot_subvolume_path = new_snapshot_dir.join(subvolume);
-			let subvolume_path = self.path().join(subvolume.replace("__", "/"));
+			let restore_target_subvolume_path =
+				restore_snapshot_dir.join(subvolume.replace('/', "__"));
+			let new_snapshot_subvolume_path = new_snapshot_dir.join(subvolume.replace('/', "__"));
+			let subvolume_path = self.path().join(subvolume);
 			info!(
 				"{} -> {}",
 				subvolume_path.display(),

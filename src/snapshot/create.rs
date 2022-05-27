@@ -32,7 +32,7 @@ impl MountedBtrfs {
 		for subvolume in &snapshot.subvolumes {
 			info!("Snapshotting {subvolume}");
 			let source = self.path().join(subvolume);
-			let destination = snapshot_dir.join(&subvolume.replace("/", "__"));
+			let destination = snapshot_dir.join(&subvolume.replace('/', "__"));
 			tokio::task::spawn_blocking(move || {
 				libbtrfsutil::create_snapshot(
 					&source,

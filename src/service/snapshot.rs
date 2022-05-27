@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use crate::snapshot::metadata::SnapshotMetadata;
-use std::{collections::HashSet, path::PathBuf, sync::Arc};
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use std::{collections::HashSet, sync::Arc};
+use time::format_description::well_known::Rfc3339;
 use tokio::sync::RwLock;
 use zbus::{dbus_interface, zvariant::OwnedObjectPath, MessageHeader, ObjectServer};
 
