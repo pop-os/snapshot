@@ -6,7 +6,7 @@ pub(crate) mod util;
 #[macro_use]
 extern crate tracing;
 
-use crate::{service::snapshot::SnapshotObject, snapshot::list::Snapshot};
+use crate::service::snapshot::SnapshotObject;
 use anyhow::{Context, Result};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing::metadata::LevelFilter;
@@ -60,14 +60,8 @@ async fn main() -> Result<()> {
 			.context("failed to list snapshots")?;
 		let mut snapshots_set = service.snapshots.write().await;
 		snapshots_set.reserve(snapshots.len());
-		for Snapshot {
-			capture_time,
-			path,
-			subvolumes,
-		} in snapshots
-		{
-			let snapshot_object =
-				SnapshotObject::new(capture_time, path, subvolumes, service.snapshots.clone());
+		for snapshot in snapshots {
+			let snapshot_object = SnapshotObject::new(snapshot, service.snapshots.clone());
 			let id = create_new_snapshot(&*connection.object_server(), snapshot_object)
 				.await
 				.context("failed to create new snapshot object")?;

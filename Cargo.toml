@@ -10,10 +10,13 @@ publish = false
 [dependencies]
 anyhow = "1"
 libbtrfsutil = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 sys-mount = { version = "1.5", default-features = false }
 tempfile = "3"
+time = { version = "0.3", features = ["serde-well-known"] }
 tokio = { version = "1", features = ["full"] }
-zbus = { version = "2", default-features = false, features = ["tokio"] }
-time = { version = "0.3", features = ["formatting"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+zbus = { version = "2", default-features = false, features = ["tokio"] }

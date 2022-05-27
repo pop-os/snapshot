@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: MPL-2.0
 
-use super::MountedBtrfs;
+use super::{metadata::SnapshotMetadata, MountedBtrfs};
 use anyhow::{anyhow, Context, Result};
 use libbtrfsutil::DeleteSubvolumeFlags;
-use time::OffsetDateTime;
 use tokio::fs;
 
 impl MountedBtrfs {
-	pub async fn delete_snapshot(&self, snapshot: OffsetDateTime) -> Result<()> {
+	pub async fn delete_snapshot(&self, snapshot: &SnapshotMetadata) -> Result<()> {
 		let snapshot_dir = self
 			.path()
 			.join("@snapshots/pop-snapshots")
-			.join(snapshot.unix_timestamp().to_string());
+			.join(snapshot.uuid.to_string());
 		if !snapshot_dir.exists() {
-			return Err(anyhow!("snapshot {} does not exist", snapshot));
+			return Err(anyhow!("snapshot {} does not exist", snapshot.uuid));
 		}
 		let mut dir = fs::read_dir(&snapshot_dir)
 			.await

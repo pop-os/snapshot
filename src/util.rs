@@ -21,7 +21,7 @@ pub async fn find_root_device() -> Result<PathBuf> {
 		.context("failed to find @root")
 }
 
-pub fn list_subvolumes_eligible_for_snapshotting(root_path: &Path) -> Result<Vec<PathBuf>> {
+pub fn list_subvolumes_eligible_for_snapshotting(root_path: &Path) -> Result<Vec<String>> {
 	let mut subvolumes = Vec::new();
 	let info =
 		libbtrfsutil::subvolume_info(root_path, None).context("failed to get subvolume info")?;
@@ -39,7 +39,7 @@ pub fn list_subvolumes_eligible_for_snapshotting(root_path: &Path) -> Result<Vec
 			);
 			continue;
 		}
-		subvolumes.push(path);
+		subvolumes.push(path.display().to_string());
 	}
 	Ok(subvolumes)
 }
