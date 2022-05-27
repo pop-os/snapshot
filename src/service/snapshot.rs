@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 
-use crate::{create_new_snapshot, snapshot::metadata::SnapshotMetadata};
+use crate::{
+	create_new_snapshot,
+	snapshot::{metadata::SnapshotMetadata, MountedBtrfs},
+};
 use anyhow::{Context, Result};
 use std::{collections::HashSet, sync::Arc};
 use time::format_description::well_known::Rfc3339;
 use tokio::sync::RwLock;
 use zbus::{dbus_interface, zvariant::OwnedObjectPath, MessageHeader, ObjectServer};
-
-use crate::snapshot::MountedBtrfs;
 
 pub struct SnapshotObject {
 	metadata: SnapshotMetadata,
