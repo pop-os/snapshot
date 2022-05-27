@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use crate::{create_new_snapshot, snapshot::metadata::SnapshotMetadata};
+use anyhow::{Context, Result};
 use std::{collections::HashSet, sync::Arc};
 use time::format_description::well_known::Rfc3339;
 use tokio::sync::RwLock;
@@ -25,6 +26,29 @@ impl SnapshotObject {
 	}
 }
 
+impl SnapshotObject {
+	async fn update_metadata_file(&self) -> Result<()> {
+		let btrfs = MountedBtrfs::new().await.context("failed to mount btrfs")?;
+		let metadata_path = btrfs
+			.path()
+			.join("@snapshots/pop-snapshots")
+			.join(self.metadata.uuid.to_string())
+			.with_extension("snapshot.json");
+		tokio::fs::write(
+			&metadata_path,
+			serde_json::to_string_pretty(&self.metadata)?,
+		)
+		.await
+		.with_context(|| {
+			format!(
+				"failed to write updated metadata to file {}",
+				metadata_path.display()
+			)
+		})?;
+		Ok(())
+	}
+}
+
 #[dbus_interface(name = "com.system76.SnapshotDaemon.Snapshot")]
 impl SnapshotObject {
 	#[dbus_interface(property)]
@@ -41,8 +65,32 @@ impl SnapshotObject {
 	}
 
 	#[dbus_interface(property)]
+	async fn set_name(&mut self, value: &str) {
+		self.metadata.name = if value.trim().is_empty() {
+			None
+		} else {
+			Some(value.to_owned())
+		};
+		self.update_metadata_file()
+			.await
+			.expect("failed to update metadata file");
+	}
+
+	#[dbus_interface(property)]
 	async fn description(&self) -> String {
 		self.metadata.description.clone().unwrap_or_default()
+	}
+
+	#[dbus_interface(property)]
+	async fn set_description(&mut self, value: &str) {
+		self.metadata.description = if value.trim().is_empty() {
+			None
+		} else {
+			Some(value.to_owned())
+		};
+		self.update_metadata_file()
+			.await
+			.expect("failed to update metadata file");
 	}
 
 	#[dbus_interface(property)]
