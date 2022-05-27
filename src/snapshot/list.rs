@@ -51,10 +51,3 @@ impl MountedBtrfs {
 		Ok(snapshots)
 	}
 }
-
-pub fn path_to_date_time(path: &Path) -> Option<OffsetDateTime> {
-	path.file_name()
-		.and_then(|file_name_os| file_name_os.to_str())
-		.and_then(|file_name| file_name.parse::<u64>().ok())
-		.and_then(|seconds| OffsetDateTime::from_unix_timestamp(seconds as i64).ok())
-}
