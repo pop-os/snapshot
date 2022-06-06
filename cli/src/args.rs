@@ -31,6 +31,10 @@ pub enum CliArgs {
 		/// Whether to automatically confirm "yes" to restoring or not.
 		#[clap(short, long)]
 		yes: bool,
+		/// Which subvolumes to snapshot.
+		/// Defaults to all subvolumes in the snapshot.
+		#[clap(short, long)]
+		subvolumes: Option<Vec<String>>,
 		/// The UUID of the snapshot to restore
 		snapshot: String,
 	},
