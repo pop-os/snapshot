@@ -1,0 +1,12 @@
+[Unit]
+Description=Pop!_OS Snapshot Daemon
+
+[Service]
+Type=dbus
+BusName=com.system76.PopSnapshot
+ExecStart=/usr/bin/pop-snapshot-daemon
+Restart=on-failure
+
+[Install]
+Alias=com.system76.PopSnapshot.service
+WantedBy=multi-user.target

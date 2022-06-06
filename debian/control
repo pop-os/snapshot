@@ -1,0 +1,25 @@
+Source: pop-snapshot
+Section: admin
+Priority: optional
+Maintainer: Lucy <lucy@system76.com>
+Build-Depends:
+  debhelper (>= 11),
+  debhelper-compat (= 11),
+  rustc (>=1.57),
+  cargo,
+  libdbus-1-dev,
+  libbtrfs-dev,
+  just,
+  pkg-config
+Standards-Version: 4.1.1
+Homepage: https://github.com/pop-os/snapshot
+
+Package: pop-snapshot
+Architecture: amd64 arm64
+Depends:
+  dbus,
+  systemd,
+  libbtrfs0,
+  ${misc:Depends},
+  ${shlibs:Depends}
+Description: Btrfs snapshot manager for Pop!_OS
