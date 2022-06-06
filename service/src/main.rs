@@ -35,7 +35,11 @@ async fn main() -> Result<()> {
 		.with(fmt::layer())
 		.with(
 			EnvFilter::builder()
-				.with_default_directive(LevelFilter::DEBUG.into())
+				.with_default_directive(if cfg!(debug_assertions) {
+					LevelFilter::DEBUG.into()
+				} else {
+					LevelFilter::INFO.into()
+				})
 				.from_env_lossy(),
 		)
 		.init();
@@ -57,8 +61,8 @@ async fn main() -> Result<()> {
 			.list_snapshots()
 			.await
 			.context("failed to list snapshots")?;
-		let mut snapshots_set = service.snapshots.write().await;
-		snapshots_set.reserve(snapshots.len());
+		let mut snapshots_map = service.snapshots.write().await;
+		snapshots_map.reserve(snapshots.len());
 		for snapshot in snapshots {
 			let snapshot_uuid = snapshot.uuid;
 			let snapshot_object = SnapshotObject::new(snapshot, service.snapshots.clone());
@@ -66,8 +70,11 @@ async fn main() -> Result<()> {
 				.await
 				.context("failed to create new snapshot object")?;
 
-			debug!("Created new snapshot object: {:?}", id);
-			snapshots_set.insert(snapshot_uuid, id);
+			debug!(
+				"Created new snapshot object for {} at {:?}",
+				snapshot_uuid, id
+			);
+			snapshots_map.insert(snapshot_uuid, id);
 		}
 	}
 	connection

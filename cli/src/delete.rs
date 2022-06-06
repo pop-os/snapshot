@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use crate::util::yes_no_prompt;
 use color_eyre::{eyre::WrapErr, Result};
 use owo_colors::OwoColorize;

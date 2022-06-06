@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use color_eyre::{eyre::WrapErr, Result};
 use owo_colors::OwoColorize;
 use zbus_pop_snapshot::{PopSnapshotProxy, SnapshotProxy};

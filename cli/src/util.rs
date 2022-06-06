@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::io::Read;
 
 pub fn yes_no_prompt() -> bool {
