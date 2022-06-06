@@ -2,9 +2,18 @@
  "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
 <busconfig>
+	<!-- Only root can fiddle around with btrfs, so the Pop Snapshot service needs to run as root. -->
 	<policy user="root">
 		<allow own="com.system76.PopSnapshot"/>
 	</policy>
+	<!-- It should be safe for any user to access the snapshot daemon.
+		 The worst a user could do is exhaust system resources,
+		 and they can do that on their own anyways.
+
+		 The service does not write files based on user input, and all parsing
+		 is done via a typed schema through serde, so I doubt this is a
+		 vector for arbitrary root r/w. I'm not perfect though, so feel free
+		 to prove me wrong. -->
 	<policy context="default">
 		<allow send_destination="com.system76.PopSnapshot"/>
 	</policy>
