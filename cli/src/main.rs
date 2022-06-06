@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
 mod args;
+mod create;
 mod delete;
 mod list;
 pub(crate) mod util;
 
-use self::args::CliArgs;
+use self::args::{CliArgs, CliSubcommand};
 use clap::Parser;
 use color_eyre::{eyre::WrapErr, Result};
 
@@ -13,20 +14,14 @@ async fn main() -> Result<()> {
 	color_eyre::install()?;
 
 	let args = CliArgs::parse();
-	match args {
-		CliArgs::List => list::list().await.wrap_err("failed to list snapshots"),
-		CliArgs::Create {
-			name,
-			description,
-			subvolumes,
-		} => todo!(),
-		CliArgs::Delete { yes, snapshot } => delete::delete(yes, snapshot)
+	match &args.subcommand {
+		CliSubcommand::List => list::list().await.wrap_err("failed to list snapshots"),
+		CliSubcommand::Create(create) => create::create(&args, create)
+			.await
+			.wrap_err("failed to create snapshot"),
+		CliSubcommand::Delete(delete) => delete::delete(&args, delete)
 			.await
 			.wrap_err("failed to delete snapshot"),
-		CliArgs::Restore {
-			yes,
-			subvolumes,
-			snapshot,
-		} => todo!(),
+		CliSubcommand::Restore(restore) => todo!(),
 	}
 }

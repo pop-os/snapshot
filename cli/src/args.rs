@@ -1,45 +1,57 @@
 // SPDX-License-Identifier: MPL-2.0
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[clap(
 	author = "Lucy <lucy@system76.com>",
 	about = "CLI tool for managing btrfs snapshots on Pop!_OS"
 )]
-pub enum CliArgs {
-	/// List all snapshots
+pub struct CliArgs {
+	/// Whether to automatically confirm "yes" to prompts or not.
+	#[clap(short, long)]
+	pub yes: bool,
+	#[clap(subcommand)]
+	pub subcommand: CliSubcommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum CliSubcommand {
+	/// List all snapshots.
 	List,
-	/// Take a snapshot of the current system state
-	Create {
-		/// The name of the snapshot
-		#[clap(short, long)]
-		name: Option<String>,
-		/// The description of the snapshot
-		#[clap(short, long)]
-		description: Option<String>,
-		/// Which subvolumes to snapshot.
-		/// Defaults to everything except for @home.
-		#[clap(short, long)]
-		subvolumes: Option<Vec<String>>,
-	},
+	/// Take a snapshot of the current system state.
+	Create(CliCreate),
 	/// Delete an existing snapshot
-	Delete {
-		/// Whether to automatically confirm "yes" to restoring or not.
-		#[clap(short, long)]
-		yes: bool,
-		/// The UUID of the snapshot to delete
-		snapshot: String,
-	},
-	/// Restore your system to a snapshot
-	Restore {
-		/// Whether to automatically confirm "yes" to restoring or not.
-		#[clap(short, long)]
-		yes: bool,
-		/// Which subvolumes to snapshot.
-		/// Defaults to all subvolumes in the snapshot.
-		#[clap(short, long)]
-		subvolumes: Option<Vec<String>>,
-		/// The UUID of the snapshot to restore
-		snapshot: String,
-	},
+	Delete(CliDelete),
+	/// Restore your system to a snapshot.
+	Restore(CliRestore),
+}
+
+#[derive(Debug, Args)]
+pub struct CliCreate {
+	#[clap(short, long)]
+	pub name: Option<String>,
+	/// The description of the snapshot
+	#[clap(short, long)]
+	pub description: Option<String>,
+	/// Which subvolumes to snapshot.
+	/// Defaults to everything except for @home.
+	#[clap(short, long)]
+	pub subvolumes: Option<Vec<String>>,
+}
+
+#[derive(Debug, Args)]
+pub struct CliDelete {
+	/// The UUID of the snapshot to delete.
+	#[clap(short, long)]
+	pub snapshot: String,
+}
+
+#[derive(Debug, Args)]
+pub struct CliRestore {
+	/// Which subvolumes to snapshot.
+	/// Defaults to all subvolumes in the snapshot.
+	#[clap(short, long)]
+	pub subvolumes: Option<Vec<String>>,
+	/// The UUID of the snapshot to restore
+	pub snapshot: String,
 }
