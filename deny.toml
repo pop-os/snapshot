@@ -10,11 +10,6 @@ default = "allow"
 confidence-threshold = 0.8
 exceptions = []
 
-[[licenses.clarify]]
-name = "libcosmic-widgets"
-expression = "MPL-2.0"
-license-files = []
-
 [bans]
 multiple-versions = "warn"
 wildcards = "allow"

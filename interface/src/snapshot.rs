@@ -3,8 +3,8 @@
 use zbus::{dbus_proxy, fdo};
 
 #[dbus_proxy(
-	interface = "com.system76.SnapshotDaemon.Snapshot",
-	default_service = "com.system76.SnapshotDaemon"
+	interface = "com.system76.PopSnapshot.Snapshot",
+	default_service = "com.system76.PopSnapshot"
 )]
 pub trait Snapshot {
 	/// The time at which this snapshot was made, in RFC3339 format.

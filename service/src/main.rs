@@ -20,8 +20,7 @@ async fn create_new_snapshot(
 	snapshot_object: SnapshotObject,
 ) -> Result<OwnedObjectPath> {
 	let new_id = COUNTER.fetch_add(1, Ordering::SeqCst);
-	let id =
-		OwnedObjectPath::try_from(format!("/com/system76/SnapshotDaemon/Snapshot/{}", new_id))?;
+	let id = OwnedObjectPath::try_from(format!("/com/system76/PopSnapshot/Snapshot/{}", new_id))?;
 	object_server
 		.at(&id, snapshot_object)
 		.await
@@ -44,8 +43,8 @@ async fn main() -> Result<()> {
 	let service = service::SnapshotService::new();
 	let connection = ConnectionBuilder::system()
 		.context("failed to get system dbus connection")?
-		.name("com.system76.SnapshotDaemon")?
-		//.serve_at("/com/system76/SnapshotDaemon", service)?
+		.name("com.system76.PopSnapshot")?
+		//.serve_at("/com/system76/PopSnapshot", service)?
 		.build()
 		.await
 		.context("failed to build connection")?;
@@ -72,7 +71,7 @@ async fn main() -> Result<()> {
 	}
 	connection
 		.object_server()
-		.at("/com/system76/SnapshotDaemon", service)
+		.at("/com/system76/PopSnapshot", service)
 		.await?;
 
 	info!("Starting pop-snapshot daemon");

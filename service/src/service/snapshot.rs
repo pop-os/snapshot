@@ -55,12 +55,12 @@ impl SnapshotObject {
 	}
 
 	async fn get_base_service(&self, conn: &Connection) -> zbus::Result<SignalContext<'_>> {
-		let path = OwnedObjectPath::try_from("/com/system76/SnapshotDaemon")?;
+		let path = OwnedObjectPath::try_from("/com/system76/PopSnapshot")?;
 		SignalContext::new(conn, path)
 	}
 }
 
-#[dbus_interface(name = "com.system76.SnapshotDaemon.Snapshot")]
+#[dbus_interface(name = "com.system76.PopSnapshot.Snapshot")]
 impl SnapshotObject {
 	#[dbus_interface(property)]
 	async fn creation_time(&self) -> String {

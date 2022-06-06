@@ -25,7 +25,7 @@ impl SnapshotService {
 	}
 }
 
-#[dbus_interface(name = "com.system76.SnapshotDaemon")]
+#[dbus_interface(name = "com.system76.PopSnapshot")]
 impl SnapshotService {
 	#[dbus_interface(property)]
 	async fn snapshots(&self) -> Vec<OwnedObjectPath> {

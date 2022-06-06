@@ -6,11 +6,11 @@ use zbus::{
 };
 
 #[dbus_proxy(
-	interface = "com.system76.SnapshotDaemon",
-	default_service = "com.system76.SnapshotDaemon",
-	default_path = "com/system76/SnapshotDaemon"
+	interface = "com.system76.PopSnapshot",
+	default_service = "com.system76.PopSnapshot",
+	default_path = "com/system76/PopSnapshot"
 )]
-pub trait SnapshotDaemon {
+pub trait PopSnapshot {
 	/// The list of snapshots that are currently registered with the daemon.
 	#[dbus_proxy(property)]
 	fn snapshots(&self) -> fdo::Result<Vec<OwnedObjectPath>>;
