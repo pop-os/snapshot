@@ -37,6 +37,7 @@ impl SnapshotService {
 		&mut self,
 		name: Optional<String>,
 		description: Optional<String>,
+		subvolumes: Optional<Vec<String>>,
 		#[zbus(signal_context)] ctxt: SignalContext<'_>,
 		#[zbus(object_server)] object_server: &ObjectServer,
 	) -> fdo::Result<OwnedObjectPath> {
@@ -45,7 +46,7 @@ impl SnapshotService {
 			.context("failed to mount btrfs")
 			.to_fdo_err()?;
 		let snapshot = btrfs
-			.create_snapshot(Option::from(name), Option::from(description))
+			.create_snapshot(name, description, subvolumes)
 			.await
 			.context("failed to create snapshot")
 			.to_fdo_err()?;

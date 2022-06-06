@@ -10,12 +10,18 @@ impl MountedBtrfs {
 		&self,
 		name: impl Into<Option<String>>,
 		description: impl Into<Option<String>>,
+		subvolumes: impl Into<Option<Vec<String>>>,
 	) -> Result<SnapshotMetadata> {
-		let subvolumes_to_snapshot = {
-			let path = self.path().to_path_buf();
-			tokio::task::spawn_blocking(move || list_subvolumes_eligible_for_snapshotting(&path))
+		let subvolumes_to_snapshot = match subvolumes.into() {
+			Some(subvolumes) => subvolumes,
+			None => {
+				let path = self.path().to_path_buf();
+				tokio::task::spawn_blocking(move || {
+					list_subvolumes_eligible_for_snapshotting(&path)
+				})
 				.await?
 				.context("failed to get eligible subvolumes to snapshot")?
+			}
 		};
 		let num_subvolumes = subvolumes_to_snapshot.len();
 		let snapshot = SnapshotMetadata::now(name, description, subvolumes_to_snapshot);

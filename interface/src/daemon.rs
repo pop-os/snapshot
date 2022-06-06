@@ -23,6 +23,7 @@ pub trait PopSnapshot {
 		&self,
 		name: Optional<String>,
 		description: Optional<String>,
+		subvolumes: Optional<Vec<String>>,
 	) -> fdo::Result<OwnedObjectPath>;
 
 	/// Emits a signal when a snapshot is created.
