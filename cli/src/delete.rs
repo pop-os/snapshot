@@ -1,6 +1,6 @@
+use crate::util::yes_no_prompt;
 use color_eyre::{eyre::WrapErr, Result};
 use owo_colors::OwoColorize;
-use std::io::Read;
 use zbus::zvariant::OwnedObjectPath;
 use zbus_pop_snapshot::{PopSnapshotProxy, SnapshotProxy};
 
@@ -44,13 +44,7 @@ pub async fn delete(yes: bool, snapshot_uuid: String) -> Result<()> {
 			"yes".green(),
 			"cancel".red()
 		);
-		let mut buf = [0_u8];
-		std::io::stdin()
-			.lock()
-			.read_exact(&mut buf)
-			.wrap_err("failed to read from stdin")?;
-		let key = buf[0] as char;
-		key == 'Y' || key == 'y'
+		yes_no_prompt()
 	};
 	if !is_sure {
 		println!(

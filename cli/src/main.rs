@@ -1,6 +1,7 @@
 mod args;
 mod delete;
 mod list;
+pub(crate) mod util;
 
 use self::args::CliArgs;
 use clap::Parser;
@@ -20,7 +21,7 @@ async fn main() -> Result<()> {
 		} => todo!(),
 		CliArgs::Delete { yes, snapshot } => delete::delete(yes, snapshot)
 			.await
-		.wrap_err("failed to delete snapshot"),
+			.wrap_err("failed to delete snapshot"),
 		CliArgs::Restore {
 			yes,
 			subvolumes,
