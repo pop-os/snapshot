@@ -1,7 +1,10 @@
 use clap::Parser;
 
 #[derive(Debug, Parser)]
-#[clap(author = "Lucy <lucy@asystem76.com>")]
+#[clap(
+	author = "Lucy <lucy@system76.com>",
+	about = "CLI tool for managing btrfs snapshots on Pop!_OS"
+)]
 pub enum CliArgs {
 	/// List all snapshots
 	List,
@@ -21,6 +24,14 @@ pub enum CliArgs {
 	/// Delete an existing snapshot
 	Delete {
 		/// The UUID of the snapshot to delete
+		snapshot: String,
+	},
+	/// Restore your system to a snapshot
+	Restore {
+		/// Whether to automatically confirm "yes" to restoring or not.
+		#[clap(short, long)]
+		yes: bool,
+		/// The UUID of the snapshot to restore
 		snapshot: String,
 	},
 }
