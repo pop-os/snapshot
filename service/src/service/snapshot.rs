@@ -7,9 +7,10 @@ use crate::{
 	util::ToFdoError,
 };
 use anyhow::{Context, Result};
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use time::format_description::well_known::Rfc3339;
 use tokio::sync::RwLock;
+use uuid::Uuid;
 use zbus::{
 	dbus_interface, fdo, zvariant::OwnedObjectPath, Connection, MessageHeader, ObjectServer,
 	SignalContext,
@@ -17,13 +18,13 @@ use zbus::{
 
 pub struct SnapshotObject {
 	metadata: SnapshotMetadata,
-	snapshots: Arc<RwLock<HashSet<OwnedObjectPath>>>,
+	snapshots: Arc<RwLock<HashMap<Uuid, OwnedObjectPath>>>,
 }
 
 impl SnapshotObject {
 	pub(crate) fn new(
 		metadata: SnapshotMetadata,
-		snapshots: Arc<RwLock<HashSet<OwnedObjectPath>>>,
+		snapshots: Arc<RwLock<HashMap<Uuid, OwnedObjectPath>>>,
 	) -> Self {
 		Self {
 			metadata,
@@ -132,13 +133,13 @@ impl SnapshotObject {
 			.await
 			.context("failed to restore snapshot")
 			.to_fdo_err()?;
-		let new_snapshot_uuid = new_snapshot.uuid.to_string();
+		let new_snapshot_uuid = new_snapshot.uuid;
 		let new_snapshot_object = SnapshotObject::new(new_snapshot, self.snapshots.clone());
 		let path = create_new_snapshot(object_server, new_snapshot_object)
 			.await
 			.context("failed to register backup snapshot")
 			.to_fdo_err()?;
-		self.snapshots.write().await.insert(path);
+		self.snapshots.write().await.insert(new_snapshot_uuid, path);
 		let base_service = self
 			.get_base_service(connection)
 			.await
@@ -147,12 +148,12 @@ impl SnapshotObject {
 		SnapshotService::snapshot_restored(
 			&base_service,
 			&self.metadata.uuid.to_string(),
-			&new_snapshot_uuid,
+			&new_snapshot_uuid.to_string(),
 		)
 		.await
 		.context("failed to emit SnapshotRestored signal")
 		.to_fdo_err()?;
-		SnapshotService::snapshot_created(&base_service, &new_snapshot_uuid)
+		SnapshotService::snapshot_created(&base_service, &new_snapshot_uuid.to_string())
 			.await
 			.context("failed to emit SnapshotCreated signal")
 			.to_fdo_err()?;
@@ -196,7 +197,7 @@ impl SnapshotObject {
 			.await
 			.context("failed to remove object")
 			.to_fdo_err()?;
-		self.snapshots.write().await.remove(&path);
+		self.snapshots.write().await.remove(&self.metadata.uuid);
 		let base_service = self
 			.get_base_service(connection)
 			.await

@@ -23,6 +23,9 @@ pub enum CliArgs {
 	},
 	/// Delete an existing snapshot
 	Delete {
+		/// Whether to automatically confirm "yes" to restoring or not.
+		#[clap(short, long)]
+		yes: bool,
 		/// The UUID of the snapshot to delete
 		snapshot: String,
 	},

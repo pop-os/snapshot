@@ -8,12 +8,15 @@ use zbus::{
 #[dbus_proxy(
 	interface = "com.system76.PopSnapshot",
 	default_service = "com.system76.PopSnapshot",
-	default_path = "com/system76/PopSnapshot"
+	default_path = "/com/system76/PopSnapshot"
 )]
 pub trait PopSnapshot {
 	/// The list of snapshots that are currently registered with the daemon.
 	#[dbus_proxy(property)]
 	fn snapshots(&self) -> fdo::Result<Vec<OwnedObjectPath>>;
+
+	/// Finds the snapshot with the given UUID.
+	fn find_snapshot(&self, uuid: &str) -> fdo::Result<Optional<OwnedObjectPath>>;
 
 	/// Takes a snapshot of the current system state.
 	fn create_snapshot(

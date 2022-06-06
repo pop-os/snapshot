@@ -60,13 +60,14 @@ async fn main() -> Result<()> {
 		let mut snapshots_set = service.snapshots.write().await;
 		snapshots_set.reserve(snapshots.len());
 		for snapshot in snapshots {
+			let snapshot_uuid = snapshot.uuid;
 			let snapshot_object = SnapshotObject::new(snapshot, service.snapshots.clone());
 			let id = create_new_snapshot(&*connection.object_server(), snapshot_object)
 				.await
 				.context("failed to create new snapshot object")?;
 
 			debug!("Created new snapshot object: {:?}", id);
-			snapshots_set.insert(id);
+			snapshots_set.insert(snapshot_uuid, id);
 		}
 	}
 	connection

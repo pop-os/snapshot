@@ -5,8 +5,9 @@ pub mod snapshot;
 use self::snapshot::SnapshotObject;
 use crate::{create_new_snapshot, snapshot::MountedBtrfs, util::ToFdoError};
 use anyhow::Context;
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
+use uuid::Uuid;
 use zbus::{
 	dbus_interface, fdo,
 	zvariant::{Optional, OwnedObjectPath},
@@ -14,7 +15,7 @@ use zbus::{
 };
 
 pub struct SnapshotService {
-	pub(crate) snapshots: Arc<RwLock<HashSet<OwnedObjectPath>>>,
+	pub(crate) snapshots: Arc<RwLock<HashMap<Uuid, OwnedObjectPath>>>,
 }
 
 impl SnapshotService {
@@ -29,7 +30,7 @@ impl SnapshotService {
 impl SnapshotService {
 	#[dbus_interface(property)]
 	async fn snapshots(&self) -> Vec<OwnedObjectPath> {
-		self.snapshots.read().await.iter().cloned().collect()
+		self.snapshots.read().await.values().cloned().collect()
 	}
 
 	async fn create_snapshot(
@@ -48,18 +49,33 @@ impl SnapshotService {
 			.await
 			.context("failed to create snapshot")
 			.to_fdo_err()?;
-		let snapshot_uuid = snapshot.uuid.to_string();
+		let snapshot_uuid = snapshot.uuid;
 		let snapshot_object = SnapshotObject::new(snapshot, self.snapshots.clone());
 		let path = create_new_snapshot(object_server, snapshot_object)
 			.await
 			.with_context(|| format!("failed to register snapshot '{snapshot_uuid}'"))
 			.to_fdo_err()?;
-		self.snapshots.write().await.insert(path.clone());
-		Self::snapshot_created(&ctxt, &snapshot_uuid)
+		self.snapshots
+			.write()
+			.await
+			.insert(snapshot_uuid, path.clone());
+		Self::snapshot_created(&ctxt, &snapshot_uuid.to_string())
 			.await
 			.context("failed to emit SnapshotCreated signal")
 			.to_fdo_err()?;
 		Ok(path)
+	}
+
+	async fn find_snapshot(&self, uuid: &str) -> fdo::Result<Optional<OwnedObjectPath>> {
+		let snapshots = self.snapshots.read().await;
+		let uuid = Uuid::parse_str(uuid)
+			.with_context(|| format!("failed to parse UUID '{uuid}'", uuid = uuid))
+			.to_fdo_err()?;
+		let snapshot = snapshots
+			.iter()
+			.find(|(k, _)| **k == uuid)
+			.map(|(_, v)| v.clone());
+		Ok(snapshot.into())
 	}
 
 	#[dbus_interface(signal)]
