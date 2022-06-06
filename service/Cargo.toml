@@ -1,5 +1,5 @@
 [package]
-name = "pop-snapshot"
+name = "pop-snapshot-daemon"
 description = "A daemon/tool for creating btrfs snapshots of a Pop!_OS system"
 authors = ["Lucy <lucy@system76.com>"]
 version = "0.1.0"
