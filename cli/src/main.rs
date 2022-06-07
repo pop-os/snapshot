@@ -3,6 +3,7 @@ mod args;
 mod create;
 mod delete;
 mod list;
+mod restore;
 pub(crate) mod util;
 
 use self::args::{CliArgs, CliSubcommand};
@@ -22,6 +23,8 @@ async fn main() -> Result<()> {
 		CliSubcommand::Delete(delete) => delete::delete(&args, delete)
 			.await
 			.wrap_err("failed to delete snapshot"),
-		CliSubcommand::Restore(restore) => todo!(),
+		CliSubcommand::Restore(restore) => restore::restore(&args, restore)
+			.await
+			.wrap_err("failed to restore snapshot"),
 	}
 }
