@@ -33,6 +33,12 @@ install:
 	# cli
 	install -Dm0755 target/release/pop-snapshot {{bindir}}/pop-snapshot
 
+clean_vendor:
+	rm -rf vendor vendor.tar .cargo/config
+
+clean: clean_vendor
+	cargo clean
+
 # Extracts vendored dependencies if vendor=1
 _extract_vendor:
 	#!/usr/bin/env sh
