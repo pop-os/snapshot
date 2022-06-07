@@ -22,7 +22,7 @@ all: _extract_vendor
 # Installs files into the system
 install:
 	# dbus config, so root can host the daemon, and so we can talk to it without root
-	install -Dm0644 service/data/{{daemon_id}}.xml {{dbusdir}}/{{daemon_id}}.xml
+	install -Dm0644 service/data/{{daemon_id}}.xml {{dbusdir}}/{{daemon_id}}.conf
 
 	# systemd service
 	install -Dm0644 service/data/{{service_name}}.service {{systemddir}}/system/{{service_name}}.service
