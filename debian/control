@@ -5,7 +5,7 @@ Maintainer: Lucy <lucy@system76.com>
 Build-Depends:
   debhelper (>= 11),
   debhelper-compat (= 11),
-  rustc (>=1.57),
+  rustc (>=1.60),
   cargo,
   clang,
   libdbus-1-dev,
