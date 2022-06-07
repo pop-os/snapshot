@@ -49,6 +49,7 @@ async fn main() -> Result<()> {
 		.context("failed to get system dbus connection")?
 		.name("com.system76.PopSnapshot")?
 		//.serve_at("/com/system76/PopSnapshot", service)?
+		.internal_executor(false)
 		.build()
 		.await
 		.context("failed to build connection")?;
@@ -84,7 +85,7 @@ async fn main() -> Result<()> {
 
 	info!("Starting pop-snapshot daemon");
 
-	std::future::pending::<()>().await;
-
-	Ok(())
+	loop {
+		connection.executor().tick().await;
+	}
 }
