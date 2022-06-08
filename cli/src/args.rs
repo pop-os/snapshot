@@ -28,6 +28,7 @@ pub enum CliSubcommand {
 
 #[derive(Debug, Args)]
 pub struct CliCreate {
+	/// The name of the snapshot.
 	#[clap(short, long)]
 	pub name: Option<String>,
 	/// The description of the snapshot
