@@ -18,3 +18,7 @@ owo-colors = "3"
 tokio = { version = "1", features = ["full"] }
 zbus = { version = "2", default-features = false, features = ["tokio"] }
 zbus-pop-snapshot = { path = "../interface" }
+
+[build-dependencies]
+clap = { version = "3", features = ["derive"] }
+clap_complete = "3.1.4"

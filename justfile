@@ -33,6 +33,11 @@ install:
 	# cli
 	install -Dm0755 target/release/pop-snapshot {{bindir}}/pop-snapshot
 
+	# cli completions
+	install -Dm0644 target/pop-snapshot.bash {{etcdir}}/bash_completion.d/pop-snapshot
+	install -Dm0644 target/_pop-snapshot {{prefix}}/share/zsh/vendor-completions/_pop-snapshot
+	install -Dm0644 target/pop-snapshot.fish {{prefix}}/share/fish/completions/pop-snapshot.fish
+
 clean_vendor:
 	rm -rf vendor vendor.tar .cargo/config
 
