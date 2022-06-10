@@ -26,6 +26,9 @@ pub trait PopSnapshot {
 		subvolumes: Optional<Vec<String>>,
 	) -> fdo::Result<OwnedObjectPath>;
 
+	/// Reloads the configuration of the pop-snapshot daemon.
+	fn reload_config(&self) -> fdo::Result<()>;
+
 	/// Emits a signal when a snapshot is created.
 	#[dbus_proxy(signal)]
 	fn snapshot_created(&self, uuid: &str) -> fdo::Result<()>;
