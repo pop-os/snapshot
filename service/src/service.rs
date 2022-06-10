@@ -4,9 +4,9 @@ pub mod snapshot;
 
 use self::snapshot::SnapshotObject;
 use crate::{create_new_snapshot, snapshot::MountedBtrfs, util::ToFdoError};
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
 use zbus::{
 	dbus_interface, fdo,
@@ -16,12 +16,14 @@ use zbus::{
 
 pub struct SnapshotService {
 	pub(crate) snapshots: Arc<RwLock<HashMap<Uuid, OwnedObjectPath>>>,
+	pub(crate) action_lock: Arc<Mutex<()>>,
 }
 
 impl SnapshotService {
 	pub fn new() -> Self {
 		Self {
 			snapshots: Arc::default(),
+			action_lock: Arc::default(),
 		}
 	}
 }
@@ -41,6 +43,10 @@ impl SnapshotService {
 		#[zbus(signal_context)] ctxt: SignalContext<'_>,
 		#[zbus(object_server)] object_server: &ObjectServer,
 	) -> fdo::Result<OwnedObjectPath> {
+		let _lock = match self.action_lock.try_lock() {
+			Ok(lock) => lock,
+			Err(_) => return Err(anyhow!("pop-snapshot is busy")).to_fdo_err(),
+		};
 		let btrfs = MountedBtrfs::new()
 			.await
 			.context("failed to mount btrfs")
@@ -51,7 +57,8 @@ impl SnapshotService {
 			.context("failed to create snapshot")
 			.to_fdo_err()?;
 		let snapshot_uuid = snapshot.uuid;
-		let snapshot_object = SnapshotObject::new(snapshot, self.snapshots.clone());
+		let snapshot_object =
+			SnapshotObject::new(snapshot, self.snapshots.clone(), self.action_lock.clone());
 		let path = create_new_snapshot(object_server, snapshot_object)
 			.await
 			.with_context(|| format!("failed to register snapshot '{snapshot_uuid}'"))

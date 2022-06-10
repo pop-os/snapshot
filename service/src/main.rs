@@ -8,7 +8,11 @@ extern crate tracing;
 
 use crate::service::snapshot::SnapshotObject;
 use anyhow::{Context, Result};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{
+	atomic::{AtomicUsize, Ordering},
+	Arc,
+};
+use tokio::sync::Mutex;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 use zbus::{zvariant::OwnedObjectPath, ConnectionBuilder, ObjectServer};
@@ -66,7 +70,11 @@ async fn main() -> Result<()> {
 		snapshots_map.reserve(snapshots.len());
 		for snapshot in snapshots {
 			let snapshot_uuid = snapshot.uuid;
-			let snapshot_object = SnapshotObject::new(snapshot, service.snapshots.clone());
+			let snapshot_object = SnapshotObject::new(
+				snapshot,
+				service.snapshots.clone(),
+				service.action_lock.clone(),
+			);
 			let id = create_new_snapshot(&*connection.object_server(), snapshot_object)
 				.await
 				.context("failed to create new snapshot object")?;

@@ -6,10 +6,10 @@ use crate::{
 	snapshot::{metadata::SnapshotMetadata, MountedBtrfs},
 	util::ToFdoError,
 };
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use std::{collections::HashMap, sync::Arc};
 use time::format_description::well_known::Rfc3339;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
 use zbus::{
 	dbus_interface, fdo, zvariant::OwnedObjectPath, Connection, MessageHeader, ObjectServer,
@@ -19,16 +19,19 @@ use zbus::{
 pub struct SnapshotObject {
 	metadata: SnapshotMetadata,
 	snapshots: Arc<RwLock<HashMap<Uuid, OwnedObjectPath>>>,
+	action_lock: Arc<Mutex<()>>,
 }
 
 impl SnapshotObject {
 	pub(crate) fn new(
 		metadata: SnapshotMetadata,
 		snapshots: Arc<RwLock<HashMap<Uuid, OwnedObjectPath>>>,
+		action_lock: Arc<Mutex<()>>,
 	) -> Self {
 		Self {
 			metadata,
 			snapshots,
+			action_lock,
 		}
 	}
 }
@@ -124,6 +127,10 @@ impl SnapshotObject {
 		#[zbus(connection)] connection: &Connection,
 		#[zbus(object_server)] object_server: &ObjectServer,
 	) -> fdo::Result<()> {
+		let _lock = match self.action_lock.try_lock() {
+			Ok(lock) => lock,
+			Err(_) => return Err(anyhow!("pop-snapshot is busy")).to_fdo_err(),
+		};
 		let btrfs = MountedBtrfs::new()
 			.await
 			.context("failed to mount btrfs")
@@ -134,7 +141,11 @@ impl SnapshotObject {
 			.context("failed to restore snapshot")
 			.to_fdo_err()?;
 		let new_snapshot_uuid = new_snapshot.uuid;
-		let new_snapshot_object = SnapshotObject::new(new_snapshot, self.snapshots.clone());
+		let new_snapshot_object = SnapshotObject::new(
+			new_snapshot,
+			self.snapshots.clone(),
+			self.action_lock.clone(),
+		);
 		let path = create_new_snapshot(object_server, new_snapshot_object)
 			.await
 			.context("failed to register backup snapshot")
@@ -166,6 +177,10 @@ impl SnapshotObject {
 		#[zbus(header)] hdr: MessageHeader<'_>,
 		#[zbus(object_server)] object_server: &ObjectServer,
 	) -> fdo::Result<()> {
+		let _lock = match self.action_lock.try_lock() {
+			Ok(lock) => lock,
+			Err(_) => return Err(anyhow!("pop-snapshot is busy")).to_fdo_err(),
+		};
 		let btrfs = MountedBtrfs::new()
 			.await
 			.context("failed to mount btrfs")
