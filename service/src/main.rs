@@ -8,11 +8,7 @@ extern crate tracing;
 
 use crate::service::snapshot::SnapshotObject;
 use anyhow::{Context, Result};
-use std::sync::{
-	atomic::{AtomicUsize, Ordering},
-	Arc,
-};
-use tokio::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 use zbus::{zvariant::OwnedObjectPath, ConnectionBuilder, ObjectServer};
