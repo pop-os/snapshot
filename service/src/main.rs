@@ -77,6 +77,7 @@ async fn main() -> Result<()> {
 	let connection = ConnectionBuilder::system()
 		.context("failed to get system dbus connection")?
 		.name("com.system76.PopSnapshot")?
+		.internal_executor(false)
 		.build()
 		.await
 		.context("failed to build connection")?;
@@ -119,6 +120,14 @@ async fn main() -> Result<()> {
 
 	let mut signals = Signals::new(vec![SIGHUP, SIGTERM])
 		.context("failed to create signal handler for SIGHUP+SIGTERM")?;
+
+	tokio::spawn(async move {
+		let executor = connection.executor();
+		loop {
+			executor.tick().await;
+		}
+	});
+
 	while let Some(signal) = signals.next().await {
 		match signal {
 			SIGHUP => {
