@@ -1,0 +1,23 @@
+# The path (relative to the base subvolume of the btrfs partition)
+# to the directory containing the snapshots.
+#
+# Defaults to `@snapshots/pop-snapshots`.
+snapshot-path = "@snapshots/pop-snapshots"
+
+# A list of subvolumes to exclude by default.
+#
+#`@snapshots` will *always* be excluded, regardless of this list.
+exclude_subvolumes = ["@home"]
+
+# A list of subvolumes to include by default.
+# This will take precedence over `subvolumes_to_exclude` if both are specified.
+# include_subvolumes = []
+
+# The logging filter to use.
+# Can be any EnvFilter-compatible string.
+# (see: https://docs.rs/tracing-subscriber/*/tracing_subscriber/filter/struct.EnvFilter.html#directives)
+#
+# The `RUST_LOG` environment variable will override this config option.
+#
+# Defaults to "info".
+log_level = "info"

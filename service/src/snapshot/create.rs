@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use super::{metadata::SnapshotMetadata, MountedBtrfs};
-use crate::util::list_subvolumes_eligible_for_snapshotting;
+use crate::{config::Config, util::list_subvolumes_eligible_for_snapshotting};
 use anyhow::{Context, Result};
 use libbtrfsutil::CreateSnapshotFlags;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 impl MountedBtrfs {
 	pub async fn create_snapshot(
@@ -11,13 +13,16 @@ impl MountedBtrfs {
 		name: impl Into<Option<String>>,
 		description: impl Into<Option<String>>,
 		subvolumes: impl Into<Option<Vec<String>>>,
+		config: Arc<RwLock<Config>>,
 	) -> Result<SnapshotMetadata> {
-		let subvolumes_to_snapshot = match subvolumes.into() {
-			Some(subvolumes) => subvolumes,
-			None => {
+		let config = config.read().await;
+		let subvolumes_to_snapshot = match (subvolumes.into(), config.include_subvolumes.clone()) {
+			(Some(subvolumes), _) | (None, Some(subvolumes)) => subvolumes,
+			(None, None) => {
 				let path = self.path().to_path_buf();
+				let exclude_subvolumes = config.exclude_subvolumes.clone();
 				tokio::task::spawn_blocking(move || {
-					list_subvolumes_eligible_for_snapshotting(&path)
+					list_subvolumes_eligible_for_snapshotting(&path, &exclude_subvolumes)
 				})
 				.await?
 				.context("failed to get eligible subvolumes to snapshot")?
@@ -31,7 +36,7 @@ impl MountedBtrfs {
 		);
 		let snapshot_dir = self
 			.path()
-			.join("@snapshots/pop-snapshots")
+			.join(&config.snapshot_path)
 			.join(snapshot.uuid.to_string());
 		if !snapshot_dir.is_dir() {
 			std::fs::create_dir_all(&snapshot_dir).context("failed to create snapshot dir")?;
@@ -54,7 +59,7 @@ impl MountedBtrfs {
 
 		let snapshot_metadata_path = self
 			.path()
-			.join("@snapshots/pop-snapshots")
+			.join(&config.snapshot_path)
 			.join(snapshot.uuid.to_string())
 			.with_extension("snapshot.json");
 		tokio::fs::write(

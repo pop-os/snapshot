@@ -3,13 +3,18 @@
 use super::{metadata::SnapshotMetadata, MountedBtrfs};
 use anyhow::{anyhow, Context, Result};
 use libbtrfsutil::CreateSnapshotFlags;
+use std::path::Path;
 use tokio::fs;
 
 impl MountedBtrfs {
-	pub async fn restore_snapshot(&self, snapshot: &SnapshotMetadata) -> Result<SnapshotMetadata> {
+	pub async fn restore_snapshot(
+		&self,
+		snapshot: &SnapshotMetadata,
+		snapshot_path: &Path,
+	) -> Result<SnapshotMetadata> {
 		let restore_snapshot_dir = self
 			.path()
-			.join("@snapshots/pop-snapshots")
+			.join(snapshot_path)
 			.join(snapshot.uuid.to_string());
 		if !restore_snapshot_dir.exists() {
 			return Err(anyhow!("snapshot {} does not exist", snapshot.uuid));
@@ -24,7 +29,7 @@ impl MountedBtrfs {
 		);
 		let new_snapshot_dir = self
 			.path()
-			.join("@snapshots/pop-snapshots")
+			.join(snapshot_path)
 			.join(new_snapshot.uuid.to_string());
 		if !new_snapshot_dir.exists() {
 			fs::create_dir_all(&new_snapshot_dir)
@@ -77,7 +82,7 @@ impl MountedBtrfs {
 
 		let new_snapshot_metadata_path = self
 			.path()
-			.join("@snapshots/pop-snapshots")
+			.join(snapshot_path)
 			.join(new_snapshot.uuid.to_string())
 			.with_extension("snapshot.json");
 		info!(

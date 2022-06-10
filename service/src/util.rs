@@ -21,18 +21,24 @@ pub async fn find_root_device() -> Result<PathBuf> {
 		.context("failed to find @root")
 }
 
-pub fn list_subvolumes_eligible_for_snapshotting(root_path: &Path) -> Result<Vec<String>> {
+pub fn list_subvolumes_eligible_for_snapshotting(
+	root_path: &Path,
+	exclude_subvolumes: &[String],
+) -> Result<Vec<String>> {
 	let mut subvolumes = Vec::new();
 	let info =
 		libbtrfsutil::subvolume_info(root_path, None).context("failed to get subvolume info")?;
 	let iter = SubvolumeIterator::new(root_path, info.parent_id(), SubvolumeIteratorFlags::empty())
 		.context("failed to iterate root subvolumes")?;
-	let home_path = PathBuf::from("@home");
 	let snapshots_path = PathBuf::from("@snapshots");
 	for subvolume in iter {
 		let (path, id) = subvolume.context("failed to get subvolume")?;
 		debug!("Found subvolume '{}' (id {id})", path.display());
-		if path.starts_with(&home_path) || path.starts_with(&snapshots_path) {
+		if path.starts_with(&snapshots_path)
+			|| exclude_subvolumes
+				.iter()
+				.any(|exclude| path.starts_with(&exclude))
+		{
 			debug!(
 				"Skipping subvolume '{}', it is not eligible for snapshotting",
 				path.display()

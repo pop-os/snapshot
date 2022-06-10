@@ -16,7 +16,11 @@ sys-mount = { version = "1.5", default-features = false }
 tempfile = "3"
 time = { version = "0.3", features = ["serde-well-known"] }
 tokio = { version = "1", features = ["full"] }
+toml = "0.5"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1", features = ["v4", "serde"] }
-zbus = "2"
+zbus = { version = "2", default-features = false, features = ["tokio"] }
+async-signals = "0.4"
+futures-util = "0.3.21"
+libc = "0.2.126"

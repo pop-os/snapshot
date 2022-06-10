@@ -27,6 +27,9 @@ install:
 	# systemd service
 	install -Dm0644 service/data/{{service_name}}.service {{systemddir}}/system/{{service_name}}.service
 
+	# config file
+	install -Dm0644 service/data/{{service_name}}.toml {{etcdir}}/{{service_name}}.toml
+
 	# daemon
 	install -Dm0755 target/release/pop-snapshot-daemon {{bindir}}/pop-snapshot-daemon
 

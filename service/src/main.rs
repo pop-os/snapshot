@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+pub(crate) mod config;
 pub(crate) mod service;
 pub(crate) mod snapshot;
 pub(crate) mod util;
@@ -8,9 +9,16 @@ extern crate tracing;
 
 use crate::service::snapshot::SnapshotObject;
 use anyhow::{Context, Result};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use async_signals::Signals;
+use futures_util::StreamExt;
+use libc::{SIGHUP, SIGTERM};
+use std::sync::{
+	atomic::{AtomicUsize, Ordering},
+	Arc,
+};
+use tokio::sync::RwLock;
 use tracing::metadata::LevelFilter;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::{filter::Directive, fmt, prelude::*, EnvFilter};
 use zbus::{zvariant::OwnedObjectPath, ConnectionBuilder, ObjectServer};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(1);
@@ -28,8 +36,28 @@ async fn create_new_snapshot(
 	Ok(id)
 }
 
+async fn reload_config(config: Arc<RwLock<config::Config>>) -> Result<()> {
+	let mut config = config.write().await;
+	*config = tokio::fs::read_to_string("/etc/pop-snapshots.toml")
+		.await
+		.context("failed to read /etc/pop-snapshots.toml")
+		.and_then(|s| toml::from_str::<config::Config>(&s).context("failed to parse config"))?;
+	info!("Configuration reloaded");
+	Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
+	let config = tokio::fs::read_to_string("/etc/pop-snapshots.toml")
+		.await
+		.ok()
+		.and_then(|s| toml::from_str::<config::Config>(&s).ok())
+		.unwrap_or_default();
+
+	let log_level: Directive = config
+		.log_level
+		.parse()
+		.with_context(|| format!("failed to parse log level: {}", config.log_level))?;
 	// Set up the tracing logger.
 	tracing_subscriber::registry()
 		.with(fmt::layer())
@@ -38,18 +66,17 @@ async fn main() -> Result<()> {
 				.with_default_directive(if cfg!(debug_assertions) {
 					LevelFilter::DEBUG.into()
 				} else {
-					LevelFilter::INFO.into()
+					log_level
 				})
 				.from_env_lossy(),
 		)
 		.init();
 
-	let service = service::SnapshotService::new();
+	let config = Arc::new(RwLock::new(config));
+	let service = service::SnapshotService::new(config.clone());
 	let connection = ConnectionBuilder::system()
 		.context("failed to get system dbus connection")?
 		.name("com.system76.PopSnapshot")?
-		//.serve_at("/com/system76/PopSnapshot", service)?
-		.internal_executor(false)
 		.build()
 		.await
 		.context("failed to build connection")?;
@@ -70,6 +97,7 @@ async fn main() -> Result<()> {
 				snapshot,
 				service.snapshots.clone(),
 				service.action_lock.clone(),
+				config.clone(),
 			);
 			let id = create_new_snapshot(&*connection.object_server(), snapshot_object)
 				.await
@@ -89,7 +117,29 @@ async fn main() -> Result<()> {
 
 	info!("Starting pop-snapshot daemon");
 
-	loop {
-		connection.executor().tick().await;
+	let mut signals = Signals::new(vec![SIGHUP, SIGTERM])
+		.context("failed to create signal handler for SIGHUP+SIGTERM")?;
+	while let Some(signal) = signals.next().await {
+		match signal {
+			SIGHUP => {
+				info!("Received SIGHUP, reloading config");
+				match reload_config(config.clone()).await {
+					Ok(_) => {
+						continue;
+					}
+					Err(e) => {
+						error!("Failed to reload config: {}", e);
+						continue;
+					}
+				}
+			}
+			SIGTERM => {
+				info!("Received SIGTERM, shutting down");
+				break;
+			}
+			_ => continue,
+		}
 	}
+
+	Ok(())
 }

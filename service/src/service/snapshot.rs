@@ -2,6 +2,7 @@
 
 use super::SnapshotService;
 use crate::{
+	config::Config,
 	create_new_snapshot,
 	snapshot::{metadata::SnapshotMetadata, MountedBtrfs},
 	util::ToFdoError,
@@ -20,6 +21,7 @@ pub struct SnapshotObject {
 	metadata: SnapshotMetadata,
 	snapshots: Arc<RwLock<HashMap<Uuid, OwnedObjectPath>>>,
 	action_lock: Arc<Mutex<()>>,
+	config: Arc<RwLock<Config>>,
 }
 
 impl SnapshotObject {
@@ -27,11 +29,13 @@ impl SnapshotObject {
 		metadata: SnapshotMetadata,
 		snapshots: Arc<RwLock<HashMap<Uuid, OwnedObjectPath>>>,
 		action_lock: Arc<Mutex<()>>,
+		config: Arc<RwLock<Config>>,
 	) -> Self {
 		Self {
 			metadata,
 			snapshots,
 			action_lock,
+			config,
 		}
 	}
 }
@@ -39,9 +43,10 @@ impl SnapshotObject {
 impl SnapshotObject {
 	async fn update_metadata_file(&self) -> Result<()> {
 		let btrfs = MountedBtrfs::new().await.context("failed to mount btrfs")?;
+		let config = self.config.read().await;
 		let metadata_path = btrfs
 			.path()
-			.join("@snapshots/pop-snapshots")
+			.join(&config.snapshot_path)
 			.join(self.metadata.uuid.to_string())
 			.with_extension("snapshot.json");
 		tokio::fs::write(
@@ -131,12 +136,13 @@ impl SnapshotObject {
 			Ok(lock) => lock,
 			Err(_) => return Err(anyhow!("pop-snapshot is busy")).to_fdo_err(),
 		};
+		let config = self.config.read().await;
 		let btrfs = MountedBtrfs::new()
 			.await
 			.context("failed to mount btrfs")
 			.to_fdo_err()?;
 		let new_snapshot = btrfs
-			.restore_snapshot(&self.metadata)
+			.restore_snapshot(&self.metadata, &config.snapshot_path)
 			.await
 			.context("failed to restore snapshot")
 			.to_fdo_err()?;
@@ -145,6 +151,7 @@ impl SnapshotObject {
 			new_snapshot,
 			self.snapshots.clone(),
 			self.action_lock.clone(),
+			self.config.clone(),
 		);
 		let path = create_new_snapshot(object_server, new_snapshot_object)
 			.await
@@ -181,18 +188,19 @@ impl SnapshotObject {
 			Ok(lock) => lock,
 			Err(_) => return Err(anyhow!("pop-snapshot is busy")).to_fdo_err(),
 		};
+		let config = self.config.read().await;
 		let btrfs = MountedBtrfs::new()
 			.await
 			.context("failed to mount btrfs")
 			.to_fdo_err()?;
 		btrfs
-			.delete_snapshot(&self.metadata)
+			.delete_snapshot(&self.metadata, &config.snapshot_path)
 			.await
 			.context("failed to delete snapshot")
 			.to_fdo_err()?;
 		let metadata_path = btrfs
 			.path()
-			.join("@snapshots/pop-snapshots")
+			.join(&config.snapshot_path)
 			.join(self.metadata.uuid.to_string())
 			.with_extension("snapshot.json");
 		tokio::fs::remove_file(&metadata_path)

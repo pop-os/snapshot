@@ -5,6 +5,9 @@ Description=Pop!_OS Snapshot Daemon
 Type=dbus
 BusName=com.system76.PopSnapshot
 ExecStart=/usr/bin/pop-snapshot-daemon
+ExecReload=busctl call com.system76.PopSnapshot \
+        	/com/system76/PopSnapshot com.system76.PopSnapshot \
+        	ReloadConfig
 Restart=on-failure
 
 [Install]

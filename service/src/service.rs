@@ -3,7 +3,7 @@
 pub mod snapshot;
 
 use self::snapshot::SnapshotObject;
-use crate::{create_new_snapshot, snapshot::MountedBtrfs, util::ToFdoError};
+use crate::{config::Config, create_new_snapshot, snapshot::MountedBtrfs, util::ToFdoError};
 use anyhow::{anyhow, Context};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{Mutex, RwLock};
@@ -17,13 +17,15 @@ use zbus::{
 pub struct SnapshotService {
 	pub(crate) snapshots: Arc<RwLock<HashMap<Uuid, OwnedObjectPath>>>,
 	pub(crate) action_lock: Arc<Mutex<()>>,
+	config: Arc<RwLock<Config>>,
 }
 
 impl SnapshotService {
-	pub fn new() -> Self {
+	pub fn new(config: Arc<RwLock<Config>>) -> Self {
 		Self {
 			snapshots: Arc::default(),
 			action_lock: Arc::default(),
+			config,
 		}
 	}
 }
@@ -52,13 +54,17 @@ impl SnapshotService {
 			.context("failed to mount btrfs")
 			.to_fdo_err()?;
 		let snapshot = btrfs
-			.create_snapshot(name, description, subvolumes)
+			.create_snapshot(name, description, subvolumes, self.config.clone())
 			.await
 			.context("failed to create snapshot")
 			.to_fdo_err()?;
 		let snapshot_uuid = snapshot.uuid;
-		let snapshot_object =
-			SnapshotObject::new(snapshot, self.snapshots.clone(), self.action_lock.clone());
+		let snapshot_object = SnapshotObject::new(
+			snapshot,
+			self.snapshots.clone(),
+			self.action_lock.clone(),
+			self.config.clone(),
+		);
 		let path = create_new_snapshot(object_server, snapshot_object)
 			.await
 			.with_context(|| format!("failed to register snapshot '{snapshot_uuid}'"))
@@ -84,6 +90,15 @@ impl SnapshotService {
 			.find(|(k, _)| **k == uuid)
 			.map(|(_, v)| v.clone());
 		Ok(snapshot.into())
+	}
+
+	async fn reload_config(&self) -> fdo::Result<()> {
+		info!("ReloadConfig called, reloading config");
+		let _lock = self.action_lock.lock().await;
+		crate::reload_config(self.config.clone())
+			.await
+			.context("failed to reload config")
+			.to_fdo_err()
 	}
 
 	#[dbus_interface(signal)]
