@@ -9,3 +9,4 @@ debian/*
 !debian/copyright
 !debian/source/format
 !debian/changelog
+!debian/pop-snapshot.*
